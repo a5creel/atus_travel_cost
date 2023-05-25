@@ -17,13 +17,12 @@ myData <- read_ipums_micro(ddi) # reads in data
 # -----------------------------------------------------------------------------
 
 # Codes I am using 
-
 # 1813.. : Travel Related to Sports, Exercise, and Recreation
 # 130000 : Sports, Exercise, and Recreation
 
 myWorking <- myData %>%
   select(-starts_with("RWT")) %>% # dropping replicate weights
-  filter(YEAR == 2021) %>% # starting only with 
+  filter(YEAR == 2021) %>% # starting only with 2021 only 
   mutate(ACTIVITY = str_pad(ACTIVITY, width = 6, pad = "0", side = "left")) %>% #getting activity code back to 6 digits 
   filter(str_starts(ACTIVITY, "1813") | str_starts(ACTIVITY, "130")) 
   
