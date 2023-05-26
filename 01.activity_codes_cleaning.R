@@ -1,6 +1,7 @@
-# Goal: Get cleaned dataset of activities that our indoor and outdoor 
+# Goal: Extract activity codes from code book to be hand cleaned
 # Andie Creel / Started May 18th
 
+rm(list = ls())
 library(ipumsr)
 library(dplyr)
 library(stringr)
@@ -42,5 +43,15 @@ myTravel <- read_excel("raw_data/activity_codes/activity_codes.xls",
 
 vroom_write(myTravel, "raw_data/activity_codes/raw/TRAVEL.csv", delim = ",") # save  
 
-  
+
+# EATING AND DRINK --------
+myEat <- read_excel("raw_data/activity_codes/activity_codes.xls", 
+                       sheet = "ACT_ALL") %>%
+  mutate(act_code = substr(Code, 1,7)) %>%
+  mutate(descrip = substr(Code, 8, 999)) %>%
+  select(-1) %>%
+  filter(str_starts(act_code, "11"))
+
+vroom_write(myEat, "raw_data/activity_codes/raw/EAT.csv", delim = ",") # save  
+
   
