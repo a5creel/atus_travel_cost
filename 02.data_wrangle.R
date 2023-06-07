@@ -57,9 +57,31 @@ myWorking <- left_join(myWorking_tc, myCodes, by = c("activity" = "act_code")) %
   select(-different_from_berry, -not_sure_on_coding)
   
 # Replace NA values with 0s in the specified columns
-columns_to_change <- c("indoor_leisure", "outdoor_rec", "travel_outdoor_rec", "travel_indoor_leisure", "my_code")
-myWorking[, columns_to_change][is.na(myWorking[, columns_to_change])] <- 0
-  
+# columns_to_change <- c("indoor_leisure", "outdoor_rec", "travel_outdoor_rec", "travel_indoor_leisure", "my_code")
+# myWorking[, columns_to_change][is.na(myWorking[, columns_to_change])] <- 0
+
+
+# -----------------------------------------------------------------------------
+# How many ourdoor rec activites per day do people do?
+# -----------------------------------------------------------------------------
+myNum_activites <- myWorking %>%
+  group_by(caseid, date) %>%
+  mutate(num_rec = sum(outdoor_rec, na.rm = T)) %>%
+  mutate(num_leisure = sum(indoor_leisure, na.rm = T)) %>%
+  select(caseid, date, num_rec, num_leisure) %>%
+  distinct()
+
+
+test_1 <- myNum_activites %>%
+  filter(num_rec != 0)
+
+test_2 <- myNum_activites %>%
+  filter(num_leisure != 0)
+
+mean(test_1$num_rec) # 1.22
+mean(test_2$num_leisure) # 5.14
+
+
 # -----------------------------------------------------------------------------
 # Group by date and individual, construct: 
 #   - travel time for outdoor recreation 
@@ -71,7 +93,9 @@ myWorking_grouped <- myWorking %>%
   mutate(travel_leisure_long = duration * travel_indoor_leisure) %>%
   group_by(caseid, date) %>%
   mutate(travel_time_rec = sum(travel_rec_long)) %>%
-  mutate(travel_time_leisure = sum(travel_leisure_long)) 
+  mutate(travel_time_leisure = sum(travel_leisure_long)) %>%
+  select(caseid, date, travel_time_rec, travel_time_leisure) %>%
+  distinct()
 
 
 

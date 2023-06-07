@@ -28,7 +28,16 @@ Travel:
 
 ## Step Two
 
-03.___.R indicates what activities are mine of interest 
+- write a demographic file "clean_data/my_demographics.csv" that can be merged back in later 
+- use "my_codes.csv" to indicate which activities are mine of interest
+- if someone does outdoor recreation on a day, they do 1.2 activities
+- if someone does indoor leisure on a day, they do 5.1 activites
 
-NEXT STEP: collect travel time, indicate no trips. think about what no trips really are. 
+Next steps:
+
+- will need to divide travel time by the number of activites you do that day and sort accordingly 
+- get data a no trips set up
+- look at notebook.
+
+
 
