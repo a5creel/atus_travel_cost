@@ -5,7 +5,7 @@ This is for my first (and maybe multiple) dissertation chapter. Of interest: sub
 ## Data Wrangle 
 
 ### Step One
-Used 01.activity_codes_cleaning.R to get CSVs of activity codes that indicates if a code is outdoor recreation or indoor leisure. I cleaned the files from the provided code book in R then went through each activity by hand and indicated if an activity was indoor leisure or outdoor recreation. CSVs in raw_data/activity_codes/raw/ are output from R script. Excel files in raw_data/activity_codes/hand_edited/ are where I did the coding. 
+Used 01.activity_codes_cleaning.R to get CSVs of activity codes that indicates if a code is outdoor recreation or indoor leisure. I cleaned the files from the provided code book in R then went through each activity by hand and indicated if an activity was indoor leisure or outdoor recreation. CSVs in raw_data/activity_codes/raw/ are output from R script. Excel files in raw_data/activity_codes/hand_edited/ are where I did the coding. Final cleaned dataset is "clean_data/my_codes.csv"
 
 Outdoor rec: 
 
@@ -28,9 +28,7 @@ Travel:
 
 ## Step Two
 
-02.activity_codes_merge.R: Merged all the codes into one data set called my_codes in the clean_data folder. 
+03.___.R indicates what activities are mine of interest 
 
-## Step Three
-
-filter 
+NEXT STEP: collect travel time, indicate no trips. think about what no trips really are. 
 
