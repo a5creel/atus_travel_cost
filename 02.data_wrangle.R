@@ -6,6 +6,18 @@ library(ipumsr)
 library(dplyr)
 library(stringr)
 library(vroom)
+library(devtools)
+# install_github("leighseverson/countyweather")
+library(countyweather)
+
+
+# -----------------------------------------------------------------------------
+# Creating a file path for a .Renviron file to for NOAA api key 
+# -----------------------------------------------------------------------------
+# file_path <- file.path("~", ".Renviron")
+# file.create(file_path)
+# file.edit(file_path)
+options("noaakey" = Sys.getenv("noaakey"))
 
 # -----------------------------------------------------------------------------
 # Load data downloaded from IPUMS (code provided by IPUMS) and activity codes
@@ -81,12 +93,24 @@ test_2 <- myNum_activites %>%
 mean(test_1$num_rec) # 1.22
 mean(test_2$num_leisure) # 5.14
 
+# -----------------------------------------------------------------------------
+# Get temperature data
+# -----------------------------------------------------------------------------
+andrew_precip <- daily_fips(fips = c("12086", "02001"), date_min = "1992-08-01", 
+                            date_max = "1992-08-31", var = "prcp")
+
+andrew_precip$daily_data$result
+
+#NEXT STEPS: run a loop through all firms and days i need
 
 # -----------------------------------------------------------------------------
 # Group by date and individual, construct: 
 #   - travel time for outdoor recreation 
 #   - travel time for indoor leisure 
 # -----------------------------------------------------------------------------
+
+#how to use mlogit
+#https://chat.openai.com/share/2e6aec1d-3a2b-4a37-b0fd-9c2b381a6319
 
 myWorking_grouped <- myWorking %>%
   mutate(travel_rec_long = duration * travel_outdoor_rec) %>%
