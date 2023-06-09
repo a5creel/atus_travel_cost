@@ -4,6 +4,7 @@
 rm(list = ls())
 library(ipumsr)
 library(dplyr)
+library(tidyr)
 library(stringr)
 library(vroom)
 library(devtools)
@@ -60,6 +61,7 @@ myWorking_tc <- myWorking_temp %>%
          activity, where, duration, interact)
 
 rm(myWorking_temp)
+
 # -----------------------------------------------------------------------------
 # Indicating if an activity is one of my four of interest. 
 # -----------------------------------------------------------------------------
@@ -69,17 +71,24 @@ myWorking <- left_join(myWorking_tc, myCodes, by = c("activity" = "act_code")) %
   select(-different_from_berry, -not_sure_on_coding)
   
 # Replace NA values with 0s in the specified columns
-# columns_to_change <- c("indoor_leisure", "outdoor_rec", "travel_outdoor_rec", "travel_indoor_leisure", "my_code")
-# myWorking[, columns_to_change][is.na(myWorking[, columns_to_change])] <- 0
+columns_to_change <- c("indoor_leisure", "outdoor_rec", "travel_outdoor_rec", "travel_indoor_leisure", "my_code")
+myWorking[, columns_to_change][is.na(myWorking[, columns_to_change])] <- 0
 
+# -----------------------------------------------------------------------------
+# Dropping activites that are at home 
+# (only interested in away from home rec and leisure)
+# -----------------------------------------------------------------------------
+
+myWorking <- myWorking %>%
+  filter(where != 0101)
 
 # -----------------------------------------------------------------------------
 # How many ourdoor rec activites per day do people do?
 # -----------------------------------------------------------------------------
 myNum_activites <- myWorking %>%
   group_by(caseid, date) %>%
-  mutate(num_rec = sum(outdoor_rec, na.rm = T)) %>%
-  mutate(num_leisure = sum(indoor_leisure, na.rm = T)) %>%
+  mutate(num_rec = sum(outdoor_rec)) %>%
+  mutate(num_leisure = sum(indoor_leisure)) %>%
   select(caseid, date, num_rec, num_leisure) %>%
   distinct()
 
@@ -90,39 +99,68 @@ test_1 <- myNum_activites %>%
 test_2 <- myNum_activites %>%
   filter(num_leisure != 0)
 
-mean(test_1$num_rec) # 1.22
-mean(test_2$num_leisure) # 5.14
+mean(test_1$num_rec) # 1.19
+mean(test_2$num_leisure) # 2
 
-# -----------------------------------------------------------------------------
-# Get temperature data
-# -----------------------------------------------------------------------------
-andrew_precip <- daily_fips(fips = c("12086", "02001"), date_min = "1992-08-01", 
-                            date_max = "1992-08-31", var = "prcp")
-
-andrew_precip$daily_data$result
-
-#NEXT STEPS: run a loop through all firms and days i need
 
 # -----------------------------------------------------------------------------
 # Group by date and individual, construct: 
 #   - travel time for outdoor recreation 
 #   - travel time for indoor leisure 
+#   - conditioning variable for obs who EITHER 
+#       - recreated AND traveled OR
+#       - leisure AND travel 
+#   - average travel time
 # -----------------------------------------------------------------------------
 
-#how to use mlogit
-#https://chat.openai.com/share/2e6aec1d-3a2b-4a37-b0fd-9c2b381a6319
 
 myWorking_grouped <- myWorking %>%
   mutate(travel_rec_long = duration * travel_outdoor_rec) %>%
   mutate(travel_leisure_long = duration * travel_indoor_leisure) %>%
   group_by(caseid, date) %>%
+  mutate(num_rec = sum(outdoor_rec)) %>%
+  mutate(num_leisure = sum(indoor_leisure)) %>%
   mutate(travel_time_rec = sum(travel_rec_long)) %>%
   mutate(travel_time_leisure = sum(travel_leisure_long)) %>%
-  select(caseid, date, travel_time_rec, travel_time_leisure) %>%
+  select(caseid, date, num_rec, num_leisure, travel_time_rec, travel_time_leisure) %>%
+  distinct() %>%
+  
+  #only keep ppl who say they did activity AND traveled for that activity
+  mutate(travel_AND_rec = num_rec*travel_time_rec) %>% # will be zero if they didn't do both
+  mutate(travel_AND_rec = ifelse(travel_AND_rec != 0, 1, travel_AND_rec)) %>% # change to a 0/1 value
+  mutate(travel_AND_leisure = num_leisure * travel_time_leisure) %>%
+  mutate(travel_AND_leisure = ifelse(travel_AND_leisure != 0, 1, travel_AND_leisure)) %>%
+  mutate(travel_AND_activity = travel_AND_rec + travel_AND_leisure) %>%
+  mutate(travel_AND_activity = ifelse(travel_AND_activity != 0, 1, travel_AND_activity)) %>%
+  filter(travel_AND_activity != 0) %>% 
+  
+  #get average travel for activity
+  mutate(avgtravel_rec = travel_time_rec/num_rec) %>%
+  mutate(avgtravel_leisure = travel_time_leisure/num_leisure)
+
+
+sum(myWorking_grouped$travel_AND_rec) #487 obs for ppl who recreated and traveled
+sum(myWorking_grouped$travel_AND_leisure)# 2431 for leisure 
+
+
+#swing long (this has an obs for every person for rec and leisure)
+myFinal <- myWorking_grouped %>%
+  select(-starts_with("travel")) %>%
+  pivot_longer(cols = -c(caseid, date), 
+               names_to = c(".value", "choice"), 
+               names_sep = "_") 
+
+# -----------------------------------------------------------------------------
+# Save files
+# -----------------------------------------------------------------------------
+
+# relevant case IDs
+myCaseIDS <- myFinal %>%
+  ungroup() %>%
+  select(caseid) %>%
   distinct()
 
+vroom_write(myCaseIDS, "clean_data/my_case_ids.csv", delim = "," )
 
-
-
-
+vroom_write(myFinal, "clean_data/my_activity_travel_long.csv", delim = ",")
 

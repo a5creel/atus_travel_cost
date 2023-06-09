@@ -4,7 +4,7 @@ This is for my first (and maybe multiple) dissertation chapter. Of interest: sub
 
 ## Data Wrangle 
 
-Note: I needed to edit my .Renviron file to and add a key from NOAA. 
+Note: I edited my .Renviron file and added a key from NOAA. 
 
 ### Step One
 Used 01.activity_codes_cleaning.R to get CSVs of activity codes that indicates if a code is outdoor recreation or indoor leisure. I cleaned the files from the provided code book in R then went through each activity by hand and indicated if an activity was indoor leisure or outdoor recreation. CSVs in raw_data/activity_codes/raw/ are output from R script. Excel files in raw_data/activity_codes/hand_edited/ are where I did the coding. Final cleaned dataset is "clean_data/my_codes.csv"
@@ -32,14 +32,20 @@ Travel:
 
 - write a demographic file "clean_data/my_demographics.csv" that can be merged back in later 
 - use "my_codes.csv" to indicate which activities are mine of interest
-- if someone does outdoor recreation on a day, they do 1.2 activities
-- if someone does indoor leisure on a day, they do 5.1 activites
+- drop obs if the recreation or leisure is located at home
+- if someone does outdoor recreation on a day, they do ~1.19 activities (away from home)
+- if someone does indoor leisure on a day, they do ~2 activities (away from home)
+- next, conditioning on ppl doing an activity AND traveling for that activity
+- calculate average travel for the activity
+- write "clean_data/my_case_ids.csv" which is relevant caseids after the conditioning 
+- write long data set "clean_data/my_activity_travel_long.csv" with number of choices for recreation and leisure by an individual on their interview data and the average travel cost for that activity
+
 
 Next steps:
 
-- will need to divide travel time by the number of activites you do that day and sort accordingly 
-- get data a no trips set up
-- look at notebook.
+- get data for no trips set up
+
+how to use mlogit: https://chat.openai.com/share/2e6aec1d-3a2b-4a37-b0fd-9c2b381a6319
 
 
 
