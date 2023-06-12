@@ -32,13 +32,19 @@ Travel:
 
 - write a demographic file "clean_data/my_demographics.csv" that can be merged back in later 
 - use "my_codes.csv" to indicate which activities are mine of interest
-- drop obs if the recreation or leisure is located at home
+- Indicate if an activity is:
+    - indoor leisure at home
+    - indoor leisre not at home
+    - outdoor rec away from home
+    - outdoor rec not away from home
 - if someone does outdoor recreation on a day, they do ~1.19 activities (away from home)
 - if someone does indoor leisure on a day, they do ~2 activities (away from home)
-- next, conditioning on ppl doing an activity AND traveling for that activity
+- I NEED TO REDO THIS STEP AND THE FOLLOWING, conditioning on ppl doing an activity AND traveling for that activity
 - calculate average travel for the activity
 - write "clean_data/my_case_ids.csv" which is relevant caseids after the conditioning 
 - write long data set "clean_data/my_activity_travel_long.csv" with number of choices for recreation and leisure by an individual on their interview data and the average travel cost for that activity
+
+**I need to get people who do no rec or leisure at all**
 
 
 Next steps:
