@@ -144,7 +144,7 @@ myWorking_grouped <- myWorking %>%
   mutate(travel_rec_long = duration * travel_outdoor_rec) %>%
   mutate(travel_leisure_long = duration * travel_indoor_leisure) %>%
   group_by(caseid, date) %>%
-
+  
   # outdoor rec numbers 
   mutate(num_rec = sum(outdoor_rec)) %>%
   mutate(num_rec_away = sum(outdoor_away)) %>%
@@ -159,6 +159,11 @@ myWorking_grouped <- myWorking %>%
   mutate(trvl_rec_home = 0) %>%
   mutate(trvl_leisure_home = 0) %>%
   
+  # no leisure 
+  mutate(temp_no_leisure = num_leisure_home + num_rec_home + num_leisure_away + num_rec_away) %>%
+  mutate(no_leisure.num = if_else(temp_no_leisure == 0, 1, 0)) %>%
+  mutate(no_leisure.trvl = NA) %>%
+  
   # getting travel time for away from home activities 
   mutate(total_time_rec = sum(travel_rec_long)) %>%
   mutate(total_time_leisure = sum(travel_leisure_long)) %>%
@@ -167,7 +172,8 @@ myWorking_grouped <- myWorking %>%
          num_rec_away, num_rec_home, 
          num_leisure_away, num_leisure_home,
          total_time_rec, total_time_leisure,
-         trvl_rec_home, trvl_leisure_home) %>%
+         trvl_rec_home, trvl_leisure_home, 
+         no_leisure.num, no_leisure.trvl) %>%
   distinct() %>%
   
   #get average travel for activity
@@ -175,21 +181,18 @@ myWorking_grouped <- myWorking %>%
   mutate(trvl_leisure_away = total_time_leisure/num_leisure_away) %>%
   select(caseid, date, 
          num_leisure_home, num_rec_home, num_leisure_away, num_rec_away,
-         trvl_leisure_home, trvl_rec_home, trvl_leisure_away, trvl_rec_away)%>%
+         trvl_leisure_home, trvl_rec_home, trvl_leisure_away, trvl_rec_away, 
+         no_leisure.num, no_leisure.trvl) %>%
   
   #renaming for pivot
-  rename(leisure_home.num = num_leisure_home, 
-         rec_home.num = num_rec_home, 
-         leisure_away.num = num_leisure_away, 
-         rec_way.num = num_rec_away, 
-         leisure_home.trvl = trvl_leisure_home, 
-         rec_home.trvl = trvl_rec_home, 
-         leisure_away.trvl = trvl_leisure_away, 
-         rec_way.trvl = trvl_rec_away)
-         
-
-
-
+  rename(leisure_home.num = num_leisure_home,
+         rec_home.num = num_rec_home,
+         leisure_away.num = num_leisure_away,
+         rec_away.num = num_rec_away,
+         leisure_home.trvl = trvl_leisure_home,
+         rec_home.trvl = trvl_rec_home,
+         leisure_away.trvl = trvl_leisure_away,
+         rec_away.trvl = trvl_rec_away)
 
 myFinal <- myWorking_grouped %>% 
   pivot_longer(cols = -c(caseid, date),
@@ -198,22 +201,10 @@ myFinal <- myWorking_grouped %>%
   rename(number_activities = num, travel_time = trvl)
 
 
-
-
-
 # -----------------------------------------------------------------------------
 # Save files
 # -----------------------------------------------------------------------------
 
-# relevant case IDs
-myCaseIDS <- myFinal %>%
-  ungroup() %>%
-  select(caseid) %>%
-  distinct()
-
-vroom_write(myCaseIDS, "clean_data/my_case_ids.csv", delim = "," )
-
 vroom_write(myFinal, "clean_data/my_activity_travel_long.csv", delim = ",")
-
 
 

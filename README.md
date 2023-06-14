@@ -1,12 +1,9 @@
 # RUM travel cost model using ATUS data
 This is for my first (and maybe multiple) dissertation chapter. Of interest: substitution between indoor and outdoor rec under different climate scenarios 
 
-
-## Data Wrangle 
-
 Note: I edited my .Renviron file and added a key from NOAA. 
 
-### Step One
+### Step One: Get activities coded
 Used 01.activity_codes_cleaning.R to get CSVs of activity codes that indicates if a code is outdoor recreation or indoor leisure. I cleaned the files from the provided code book in R then went through each activity by hand and indicated if an activity was indoor leisure or outdoor recreation. CSVs in raw_data/activity_codes/raw/ are output from R script. Excel files in raw_data/activity_codes/hand_edited/ are where I did the coding. Final cleaned dataset is "clean_data/my_codes.csv"
 
 Outdoor rec: 
@@ -28,7 +25,13 @@ Travel:
 - Outdoor rec: everything under travel coded with 130
 
 
-## Step Two
+## Step Two: Get quantity demand for each of my activities and travel time for some
+
+In 02.number_of_activities.R: I get the quantity demanded for each of all 5 activities by every individual in that years ATUS data set. Activities are: leisure at home, leisure away from home,  rec at home, rec away from home, no leisure or outdoor recreation.  
+
+I calculate travel time for if people leisure/recreate at home (zero) and if they choose do away from home leisure/recreation. There are more travel time times to calculate in step 3.
+
+More detailed description: 
 
 - write a demographic file "clean_data/my_demographics.csv" that can be merged back in later 
 - use "my_codes.csv" to indicate which activities are mine of interest
@@ -44,17 +47,17 @@ Travel:
     - If outdoor leisure is at home, then travel time was 0 
     - If indoor leisure is NOT at home, then the travel time was the sum of all travel for leisure divided by # of away from home leisure activities 
     - If outdoor recreation is NOT at home, then the travel time was the sum of all travel for recreation divided by the # of away from home recreation activities 
-- I NEED TO REDO THIS STEP AND THE FOLLOWING, conditioning on ppl doing an activity AND traveling for that activity
-- calculate average travel for the activity
-- write "clean_data/my_case_ids.csv" which is relevant caseids after the conditioning 
-- write long data set "clean_data/my_activity_travel_long.csv" with number of choices for recreation and leisure by an individual on their interview data and the average travel cost for that activity
-
-**I need to get people who do no rec or leisure at all**
+- write long data set "clean_data/my_activity_travel_long.csv" with number of choices for recreation and leisure by an individual on their interview data and the average travel time for that activity
+- All individuals are included in this file (inclusion of "no leisure" makes this a full set of people)
 
 
-Next steps:
+## Step Three: Get travel time for remaining activites 
+Get travel time for when someone doesn't demand any away from home recreation or leisure and for when people don't leisure/recreate at all. 
 
-- get data for no trips set up
+For 0 demand for leisure/recreation, I get the average travel time to that away from home activity for that person's racial group (EJ literature to support grouping around race). 
+
+
+## Step Four
 
 how to use mlogit: https://chat.openai.com/share/2e6aec1d-3a2b-4a37-b0fd-9c2b381a6319
 
