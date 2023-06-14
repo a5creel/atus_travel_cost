@@ -32,13 +32,18 @@ Travel:
 
 - write a demographic file "clean_data/my_demographics.csv" that can be merged back in later 
 - use "my_codes.csv" to indicate which activities are mine of interest
+- I **assume** that not indicating that at activity is "at home" is equivalent to indicating activity is "away from home". 
 - Indicate if an activity is:
     - indoor leisure at home
-    - indoor leisre not at home
-    - outdoor rec away from home
-    - outdoor rec not away from home
-- if someone does outdoor recreation on a day, they do ~1.19 activities (away from home)
-- if someone does indoor leisure on a day, they do ~2 activities (away from home)
+    - indoor leisure not at home
+    - outdoor rec at home (not away from home)
+    - outdoor rec not at from home (away from home)
+- calculate total number of each of these activities done by a person on one day
+- I **assume** that:
+    - If indoor leisure is at home, then the travel time was 0
+    - If outdoor leisure is at home, then travel time was 0 
+    - If indoor leisure is NOT at home, then the travel time was the sum of all travel for leisure divided by # of away from home leisure activities 
+    - If outdoor recreation is NOT at home, then the travel time was the sum of all travel for recreation divided by the # of away from home recreation activities 
 - I NEED TO REDO THIS STEP AND THE FOLLOWING, conditioning on ppl doing an activity AND traveling for that activity
 - calculate average travel for the activity
 - write "clean_data/my_case_ids.csv" which is relevant caseids after the conditioning 
