@@ -1,4 +1,5 @@
-# Goal: Wrangle all the data
+# Goal: Get the quantity demanded for each of 5 activities and some of the 
+#       travel times 
 # Andie Creel / Started May 18th
 
 rm(list = ls())
@@ -8,9 +9,6 @@ library(tidyr)
 library(stringr)
 library(vroom)
 library(devtools)
-# install_github("leighseverson/countyweather")
-library(countyweather)
-
 
 # -----------------------------------------------------------------------------
 # Creating a file path for a .Renviron file to for NOAA api key 
