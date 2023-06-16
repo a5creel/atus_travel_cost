@@ -54,7 +54,8 @@ More detailed description:
 ## Step Three: Get travel time for remaining activites 
 Get travel time for when someone doesn't demand any away from home recreation or leisure and for when people don't leisure/recreate at all. 
 
-For 0 demand for leisure/recreation, I get the average travel time to that away from home activity for that person's racial group (EJ literature to support grouping around race). 
+For 0 demand for away form home leisure/recreation, I get the average travel time to that away from home activity for that person's racial group (EJ literature to support grouping around race) and use that as the cost for no trips. 
+
 
 
 ## Step Four

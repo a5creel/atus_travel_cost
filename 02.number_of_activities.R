@@ -20,9 +20,9 @@ options("noaakey" = Sys.getenv("noaakey"))
 
 # -----------------------------------------------------------------------------
 # Load data downloaded from IPUMS (code provided by IPUMS) and activity codes
-# atus_00002 only has 2017 - 2022
+# atus_00003 only has 2017 - 2022
 # -----------------------------------------------------------------------------
-ddi <- read_ipums_ddi("raw_data/atus_00002.xml") #reads in code book
+ddi <- read_ipums_ddi("raw_data/atus_00003.xml") #reads in code book
 myData <- read_ipums_micro(ddi) # reads in data 
 
 myCodes <- vroom("clean_data/my_codes.csv") %>%
@@ -47,7 +47,7 @@ names(myWorking_temp) <- tolower(names(myWorking_temp))
 myDemographics <- myWorking_temp %>%
   select(year, statefip, county, caseid, 
          age, sex, race, hispan, asian, marst, citizen, educyrs, 
-         earnweek, hourwage) %>%
+         earnweek, hourwage, famincome) %>%
   mutate(caseid = format(caseid, scientific = FALSE)) %>%
   distinct()
 
