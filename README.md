@@ -4,7 +4,7 @@ This is for my first (and maybe multiple) dissertation chapter. Of interest: sub
 Note: I edited my .Renviron file and added a key from NOAA. 
 
 ### Step One: Get activities coded
-Used 01.activity_codes_cleaning.R to get CSVs of activity codes that indicates if a code is outdoor recreation or indoor leisure. I cleaned the files from the provided code book in R then went through each activity by hand and indicated if an activity was indoor leisure or outdoor recreation. CSVs in raw_data/activity_codes/raw/ are output from R script. Excel files in raw_data/activity_codes/hand_edited/ are where I did the coding. Final cleaned dataset is "clean_data/my_codes.csv"
+Used 01.activity_codes_cleaning.R to get CSVs of activity codes that indicates if a code is outdoor recreation or indoor leisure. I cleaned the files from the provided code book in R then went through each activity by hand and indicated if an activity was indoor leisure or outdoor recreation. CSVs in raw_data/activity_codes/raw/ are output from R script. Excel files in raw_data/activity_codes/hand_edited/ are where I did the coding. Final cleaned data set is "clean_data/my_codes.csv"
 
 Outdoor rec: 
 
@@ -54,8 +54,9 @@ More detailed description:
 ## Step Three: Get travel time for remaining activites 
 Get travel time for when someone doesn't demand any away from home recreation or leisure and for when people don't leisure/recreate at all. 
 
-For 0 demand for away form home leisure/recreation, I get the average travel time to that away from home activity for that person's racial group (EJ literature to support grouping around race) and use that as the cost for no trips. 
+For 0 demand for away form home leisure/recreation, I get the average travel time to that away from home activity for that person's racial group (EJ literature to support grouping around race) and use that as the cost for no trips. I include observations where the observed demand is greater than zero to calculate average travel time. NOTE: some of these observations have zero travel time (because some people say the recreated away from home but don't include travel time to recreation. Ex. they stopped at the park while running errands.)
 
+**Should I adjust the travel time for away from home activity with zero travel time?**
 
 
 ## Step Four

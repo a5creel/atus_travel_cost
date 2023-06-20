@@ -10,6 +10,7 @@ library(stringr)
 library(vroom)
 library(mlogit)
 library(conflicted)
+library(lubridate)
 
 #Setting package::function priority with conflicted package
 conflict_prefer("filter", "dplyr")
@@ -20,9 +21,11 @@ conflict_prefer("select", "dplyr")
 # Read in files
 # -----------------------------------------------------------------------------
 
-myTC_og <- vroom("clean_data/my_activity_travel_long.csv")
+myTC_og <- vroom("clean_data/2.num_activities_ALL.csv") %>%
+  mutate(year = as.numeric(substr(as.character(date), 1,4)))
+  
 
-myDems_og <- vroom("clean_data/my_demographics.csv")
+myDems_og <- vroom("clean_data/2.demographics_ALL.csv")
 
 # -----------------------------------------------------------------------------
 # Get race/ethnicity variable 
@@ -59,7 +62,7 @@ myDem_race <- myDems_og %>%
   mutate(my_race = if_else(race == 201, "white-native", my_race)) %>%
   mutate(my_race = if_else(race == 202, "white-asian", my_race)) %>%
   mutate(my_race = if_else(is.na(my_race), "other", my_race)) %>%
-  select(caseid, my_race, county, hourwage, earnweek, famincome)
+  select(caseid, year, my_race, county, hourwage, earnweek, famincome)
   
 
 # -----------------------------------------------------------------------------
@@ -71,41 +74,40 @@ myDem_race <- myDems_og %>%
 # -----------------------------------------------------------------------------
 
 # data set of recreation trips with positive demand and travel time
-myAvgTrvl_rec <- left_join(myTC_og, myDem_race, by = "caseid") %>%
+myAvgTrvl_rec <- left_join(myTC_og, myDem_race, by = c("caseid", "year")) %>%
   filter(variable == "rec_away") %>%
   filter(number_activities != 0) %>%
-  # filter(travel_time != 0) %>%
-  group_by(my_race) %>%
+  group_by(my_race, year) %>%
   mutate(avg_trvl_time_rec = mean(travel_time)) %>%
-  select(my_race, avg_trvl_time_rec) %>%
+  select(year, my_race, avg_trvl_time_rec) %>%
   distinct()
 
 # data set of leisure with positive demand and travel time
-myAvgTrvl_leisure <- left_join(myTC_og, myDem_race, by = "caseid") %>%
+myAvgTrvl_leisure <- left_join(myTC_og, myDem_race, by = c("caseid", "year")) %>%
   filter(variable == "leisure_away") %>%
   filter(number_activities != 0) %>%
-  # filter(travel_time != 0) %>%
-  group_by(my_race) %>%
+  group_by(my_race, year) %>%
   mutate(avg_trvl_time_leisure = mean(travel_time)) %>%
-  select(my_race, avg_trvl_time_leisure) %>%
+  select(year, my_race, avg_trvl_time_leisure) %>%
   distinct()
 
 
 myRaceCounts <- myDem_race %>%
+  group_by(year) %>%
   count(my_race, name = "race_count")
 
-myAvg_trvl_time <- left_join(myRaceCounts, myAvgTrvl_leisure, by = "my_race") %>%
-  left_join(myAvgTrvl_rec, by = "my_race")
+myAvg_trvl_time <- left_join(myRaceCounts, myAvgTrvl_leisure, by = c("my_race", "year")) %>%
+  left_join(myAvgTrvl_rec, by = c("my_race", "year"))
 
 rm(myRaceCounts, myAvgTrvl_leisure, myAvgTrvl_rec)
 
 # -----------------------------------------------------------------------------
-# Add race my Working, then add travel time for no trip. 
+# Add race and avg travel time for no trip. 
 # -----------------------------------------------------------------------------
 
 # merge in race and avg travel time
-myWorking_merge <- left_join(myTC_og, myDem_race, by = "caseid") %>%
-  left_join(myAvg_trvl_time, by = "my_race")
+myWorking_merge <- left_join(myTC_og, myDem_race, by = c("caseid", "year")) %>%
+  left_join(myAvg_trvl_time, by = c("my_race", "year"))
 
 
 # if someone has no trip for an activity, make travel_time be equal 
@@ -133,34 +135,13 @@ rm(myWorking_merge, myWorking_trvl_time)
 # test <- myWorking_trvl_cost %>%
 #   filter(earnweek == 99999.99)
 
-
-# -----------------------------------------------------------------------------
-# test for logit 
-# https://cran.r-project.org/web/packages/mlogit/vignettes/c2.formula.data.html
-# -----------------------------------------------------------------------------
-myLogitTest <- myWorking_trvl_cost %>%
-  mutate(choice = if_else(number_activities>0, 1, 0)) %>%
-  filter(variable != "no_leisure") %>%
-  filter(my_race != "other") %>% # can't have NAs 
-  group_by(caseid) %>%
-  mutate(choice_yes = sum(number_activities)) %>% # cant have no choice 
-  filter(choice_yes != 0) %>%
-  ungroup() %>%
-  mutate(variable = as.factor(variable)) %>%
-  filter(earnweek != 99999.99)
-
-# relevel 
-myLogitTest$variable <- relevel(myLogitTest$variable, ref = "leisure_home")
-
-myTest <- dfidx(myLogitTest, idx = list(NA, "variable"))
-ml.MC1 <- mlogit(choice ~ travel_time |earnweek, myTest)
-summary(ml.MC1)
+vroom_write(myWorking_trvl_cost, "clean_data/3.travel_times_all.csv")
 
 
 
 
 
-data_mlogit <- mlogit.data(myLogitTest, choice = "choice", shape = "long")
+
 
 
 

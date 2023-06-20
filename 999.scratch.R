@@ -1,4 +1,18 @@
-# keep track of things i'm not ready to delete
+# Goal: keep track of things i'm not ready to delete
+# Andie Creel / Started: June 20, 2023
+
+
+
+# -----------------------------------------------------------------------------
+# Creating a file path for a .Renviron file to for NOAA api key 
+# -----------------------------------------------------------------------------
+# file_path <- file.path("~", ".Renviron")
+# file.create(file_path)
+# file.edit(file_path)
+# options("noaakey" = Sys.getenv("noaakey"))
+
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 # Set the number of cores to be used
 num_cores <- detectCores()

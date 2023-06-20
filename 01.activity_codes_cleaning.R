@@ -73,7 +73,7 @@ myCodes <- myCodes %>%
   mutate(my_code = indoor_leisure + outdoor_rec + travel_outdoor_rec + travel_indoor_leisure) %>%
   filter(my_code !=0) 
 
-vroom_write(myCodes, "clean_data/my_codes.csv", delim = ",") # writing to clean data folder 
+vroom_write(myCodes, "clean_data/1.my_codes.csv", delim = ",") # writing to clean data folder 
 
 
 
