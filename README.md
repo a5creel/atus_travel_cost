@@ -58,10 +58,15 @@ For 0 demand for away form home leisure/recreation, I get the average travel tim
 
 **Should I adjust the travel time for away from home activity with zero travel time?**
 
+**a lot of missing income!!**
 
 ## Step Four
 
 how to use mlogit: https://chat.openai.com/share/2e6aec1d-3a2b-4a37-b0fd-9c2b381a6319
 
 
+# COME BACK 
 
+- missing income
+- zero travel cost for away from home activities 
+- how to group for no trips (race?? State??) Need to do both. 
