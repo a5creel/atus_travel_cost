@@ -15,7 +15,7 @@ library(devtools)
 ###############################################################################
 
 cleanYears <-function(extract, file_names){
-
+  
   # -----------------------------------------------------------------------------
   # Load data downloaded from IPUMS (code provided by IPUMS) and activity codes
   # atus_00003 only has 2017 - 2022
@@ -35,7 +35,6 @@ cleanYears <-function(extract, file_names){
   # Dropping replicate weights, only working with one year
   myWorking_temp <- myData %>%
     select(-starts_with("RWT")) %>% # dropping replicate weights
-    # filter(YEAR == 2021) %>% # starting only with 2021 only 
     mutate(ACTIVITY = str_pad(ACTIVITY, width = 6, pad = "0", side = "left")) 
   
   # lower case 
@@ -102,43 +101,11 @@ cleanYears <-function(extract, file_names){
   (sum(myWorking$indoor_leisure) == sum(myWorking$indoor_home) + sum(myWorking$indoor_away))
   
   # -----------------------------------------------------------------------------
-  # How many activities per day do people do?
-  # -----------------------------------------------------------------------------
-  myWorking_num <- myWorking %>%
-    group_by(caseid, date) %>%
-    mutate(num_rec = sum(outdoor_rec)) %>%
-    mutate(num_rec_away = sum(outdoor_away)) %>%
-    mutate(num_rec_home = sum(outdoor_home)) %>%
-  
-    mutate(num_leisure = sum(indoor_leisure)) %>%
-    mutate(num_leisure_home = sum(indoor_home)) %>%
-    mutate(num_leisure_away = sum(indoor_away)) %>%
-  
-    select(caseid, date,
-           # num_rec, num_leisure, 
-           num_rec_away, num_rec_home,
-           num_leisure_home, num_leisure_away) %>%
-    distinct()
-  
-  # -----------------------------------------------------------------------------
-  # Assuming activities at home require zero travel cost
+  # Group by date and individual, construct number and travel
   # -----------------------------------------------------------------------------
   
-  myWorking_num_trvl1 <- myWorking_num %>%
-    mutate(trvl_rec_home = 0) %>%
-    mutate(trvl_leisure_home = 0)
-  
-  # -----------------------------------------------------------------------------
-  # Group by date and individual, construct: 
-  #   - Assumption that activities at home require zero travel cost
-  #   - Number of activities per day people do
-  #   - Travel time for away from home outdoor recreation 
-  #   - Travel time for away from home indoor leisure 
-  # -----------------------------------------------------------------------------
-  
-  myWorking_grouped <- myWorking %>%
-    mutate(travel_rec_long = duration * travel_outdoor_rec) %>%
-    mutate(travel_leisure_long = duration * travel_indoor_leisure) %>%
+  # Number of activities per day people do  
+  myWorking_grouped_num <- myWorking %>%
     group_by(caseid, date) %>%
     
     # outdoor rec numbers 
@@ -150,52 +117,65 @@ cleanYears <-function(extract, file_names){
     mutate(num_leisure = sum(indoor_leisure)) %>%
     mutate(num_leisure_home = sum(indoor_home)) %>%
     mutate(num_leisure_away = sum(indoor_away)) %>%
+   
+   # no leisure 
+    mutate(temp_no_leisure = num_leisure_home + num_rec_home + num_leisure_away + num_rec_away) %>%
+    mutate(no_leisure.num = if_else(temp_no_leisure == 0, 1, 0)) %>%
+    mutate(no_leisure.trvltot = NA) %>%
+    
+    ungroup()
+    
+  # travel time for away from home activities 
+  myWorking_grouped_travel <- myWorking_grouped_num %>%
+    mutate(travel_rec_long = duration * travel_outdoor_rec) %>%
+    mutate(travel_leisure_long = duration * travel_indoor_leisure) %>%
+    group_by(caseid, date) %>% 
     
     # travel for activities at home
     mutate(trvl_rec_home = 0) %>%
     mutate(trvl_leisure_home = 0) %>%
     
-    # no leisure 
-    mutate(temp_no_leisure = num_leisure_home + num_rec_home + num_leisure_away + num_rec_away) %>%
-    mutate(no_leisure.num = if_else(temp_no_leisure == 0, 1, 0)) %>%
-    mutate(no_leisure.trvl = NA) %>%
-    
     # getting travel time for away from home activities 
     mutate(total_time_rec = sum(travel_rec_long)) %>%
     mutate(total_time_leisure = sum(travel_leisure_long)) %>%
   
-    select(caseid, date, num_rec, num_leisure, 
+    select(caseid, date, 
            num_rec_away, num_rec_home, 
            num_leisure_away, num_leisure_home,
-           total_time_rec, total_time_leisure,
+           no_leisure.num, no_leisure.trvltot,
            trvl_rec_home, trvl_leisure_home, 
-           no_leisure.num, no_leisure.trvl) %>%
-    distinct() %>%
-    
-    #get average travel for activity
-    mutate(trvl_rec_away = total_time_rec/num_rec_away) %>%
-    mutate(trvl_leisure_away = total_time_leisure/num_leisure_away) %>%
-    select(caseid, date, 
-           num_leisure_home, num_rec_home, num_leisure_away, num_rec_away,
-           trvl_leisure_home, trvl_rec_home, trvl_leisure_away, trvl_rec_away, 
-           no_leisure.num, no_leisure.trvl) %>%
+           total_time_rec, total_time_leisure) %>%
+    distinct() 
+
+  #get average travel for activity
+  myWorking_grouped_travel_2 <- myWorking_grouped_travel %>%
+    mutate(avg_time_rec = total_time_rec/num_rec_away) %>%
+    mutate(avg_time_leisure = total_time_leisure/num_leisure_away) %>%
     
     #renaming for pivot
     rename(leisure_home.num = num_leisure_home,
            rec_home.num = num_rec_home,
            leisure_away.num = num_leisure_away,
            rec_away.num = num_rec_away,
-           leisure_home.trvl = trvl_leisure_home,
-           rec_home.trvl = trvl_rec_home,
-           leisure_away.trvl = trvl_leisure_away,
-           rec_away.trvl = trvl_rec_away)
+           
+           leisure_home.trvlavg = trvl_leisure_home,
+           rec_home.trvlavg = trvl_rec_home,
+           leisure_away.trvlavg = avg_time_leisure,
+           rec_away.trvlavg = avg_time_rec,
+           
+           leisure_home.trvltot= trvl_leisure_home,
+           rec_home.trvltot = trvl_rec_home,
+           leisure_away.trvltot = total_time_leisure,
+           rec_away.trvltot = total_time_rec)
   
-  myFinal <- myWorking_grouped %>% 
+  myFinal <- myWorking_grouped_travel_2 %>% 
     pivot_longer(cols = -c(caseid, date),
                  names_to = c("variable", ".value"),
                  names_pattern = "(.*)\\.(.*)")%>% 
-    rename(number_activities = num, travel_time = trvl)
-  
+    rename(number_activities = num, 
+           travel_time_avg = trvlavg, 
+           travel_time_total = trvltot) %>%
+    mutate(travel_time_avg = if_else(variable == "rec_home" | variable == "leisure_home", 0, travel_time_avg))
   
   # -----------------------------------------------------------------------------
   # Save files
@@ -206,7 +186,7 @@ cleanYears <-function(extract, file_names){
 }
 
 ###############################################################################
-# Run (only need to run once)
+# Run (only need to run once) (NOTE: average and total are correct here. )
 ###############################################################################
 
 cleanYears("00004", "2013-2021")
