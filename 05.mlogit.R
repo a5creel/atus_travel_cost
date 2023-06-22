@@ -30,7 +30,6 @@ myLogit_df <- myWorking %>%
   filter(choice_yes != 0) %>%# cant have no choice
   ungroup() %>%
   mutate(variable = as.factor(variable)) %>%
-  filter(earnweek != 99999.99) %>% #dropping people who we don't have weekly earnings for
   filter(!is.na(tmmx)) %>% # dropping people we don't have weather for
   mutate(race = as.factor(race)) 
 
@@ -45,13 +44,13 @@ myLogit_formatted <- dfidx(myLogit_df, idx = list(NA, "variable"))
 # -----------------------------------------------------------------------------
 
 # using travel time that's grouped by race 
-reg1.a<- mlogit(choice ~ travel_time_total_race | earnweek + tmmx, # formula
+reg1.a<- mlogit(choice ~ travel_time_total_race | fam_inc_mid + tmmx, # formula
                myLogit_formatted, #mlogit data object
                reflevel = "leisure_home", #reference level 
                alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available
 
 # using travel time that's grouped by state 
-reg1.b<- mlogit(choice ~ travel_time_avg_state | earnweek + tmmx, # formula
+reg1.b<- mlogit(choice ~ travel_time_avg_state | fam_inc_mid + tmmx, # formula
                 myLogit_formatted, #mlogit data object
                 reflevel = "leisure_home", #reference level 
                 alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available
@@ -108,6 +107,7 @@ reg2 <- mlogit(choice ~ travel_time_avg_race | race, # formula
                myLogit_formatted, #mlogit data object
                reflevel = "leisure_away", #reference level
                alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available
+
 
 summary(reg2)
 
