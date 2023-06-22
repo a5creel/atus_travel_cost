@@ -73,7 +73,9 @@ Merges in weather **and family income**.
 
 This uses Jude Bayham's [gridMET repository](https://github.com/a5creel/gridMETr). The weather county is by date and county. 
 
-I use the income codes and get the lower bound of the bin, the upper bound of the bin, and the midpoint of the binned income. 100% of respondents in 2021 reported this income, whereas only ~50% report their weekly earning
+I use the income codes and get the lower bound of the bin, the upper bound of the bin, and the midpoint of the binned income. 100% of respondents in 2021 reported this income, whereas only ~50% report their weekly earning. 
+
+**ATTN:** I need to address that this cna only be set identified with income ! 
 
 ## Step Five 
 how to use mlogit: https://chat.openai.com/share/2e6aec1d-3a2b-4a37-b0fd-9c2b381a6319
