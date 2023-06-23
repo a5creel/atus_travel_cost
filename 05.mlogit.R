@@ -10,31 +10,25 @@ library(stringr)
 library(vroom)
 library(mlogit)
 library(stargazer)
+library(lubridate)
 
 # -----------------------------------------------------------------------------
 # Read in data
 # -----------------------------------------------------------------------------
 
-myWorking <- vroom("clean_data/4.weather_tc_2021.csv")
+myWorking_og <- vroom("clean_data/4.weather_tc_2021.csv") %>%
+  mutate(quarter = quarter(date))
 
 # -----------------------------------------------------------------------------
 # Data cleaning 
 # https://cran.r-project.org/web/packages/mlogit/vignettes/c2.formula.data.html
 # -----------------------------------------------------------------------------
-myLogit_df <- myWorking %>%
+myLogit_df <- myWorking_og %>%
   mutate(choice = if_else(number_activities > 0, 1, 0)) %>% # demand is 0/1 (extensive, not intensive)
-  # filter(variable != "no_leisure") %>% 
   filter(race != "other") %>% # can't have NAs 
-  group_by(caseid) %>%
-  mutate(choice_yes = sum(number_activities)) %>% 
-  filter(choice_yes != 0) %>%# cant have no choice
-  ungroup() %>%
   mutate(variable = as.factor(variable)) %>%
   filter(!is.na(tmmx)) %>% # dropping people we don't have weather for
   mutate(race = as.factor(race)) 
-
-# relevel so everything is compared to at home leisure  
-# myLogit_df$variable <- relevel(myLogit_df$variable, ref = "leisure_home")
 
 #turning into mlogit object
 myLogit_formatted <- dfidx(myLogit_df, idx = list(NA, "variable"))
@@ -47,7 +41,7 @@ myLogit_formatted <- dfidx(myLogit_df, idx = list(NA, "variable"))
 reg1.a<- mlogit(choice ~ travel_time_total_race | fam_inc_mid + tmmx, # formula
                myLogit_formatted, #mlogit data object
                reflevel = "leisure_home", #reference level 
-               alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available
+               alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available (dropped no leisure)
 
 # using travel time that's grouped by state 
 reg1.b<- mlogit(choice ~ travel_time_avg_state | fam_inc_mid + tmmx, # formula
@@ -112,7 +106,6 @@ reg2 <- mlogit(choice ~ travel_time_avg_race | race, # formula
 summary(reg2)
 
 
-
 # -----------------------------------------------------------------------------
 # Checking fitness
 # -----------------------------------------------------------------------------
@@ -126,3 +119,28 @@ with(reg1.a, {
   plot(test_1, test_2, main = "Fitted vs Residuals")
   qqnorm(test_2)
 })
+
+# -----------------------------------------------------------------------------
+# run by season 
+# -----------------------------------------------------------------------------
+
+myQuarterReg <- function(i){
+
+  myWorking_temp <- myLogit_formatted %>%
+    filter(quarter == i) 
+  
+  reg <- mlogit(choice ~ travel_time_total_state | fam_inc_mid + tmmx, # formula
+                         myWorking_temp, #mlogit data object
+                         reflevel = "leisure_home", #reference level 
+                         alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available (dropped no leisure)
+  
+}
+
+
+quarterRegs <- lapply(1:4, myQuarterReg)
+
+
+stargazer(quarterRegs[[1]], quarterRegs[[2]], quarterRegs[[3]], quarterRegs[[4]],
+          type = "text")
+
+

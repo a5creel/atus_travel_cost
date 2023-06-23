@@ -83,9 +83,7 @@ how to use mlogit: https://chat.openai.com/share/2e6aec1d-3a2b-4a37-b0fd-9c2b381
 
 # Next Steps:
 
-- cut by season 
 - create a different race indicator (over identified)
   - investigate just white vs black ? 
-- get all the weather downloaded 
 - find a dataset for urban heat islands 
 

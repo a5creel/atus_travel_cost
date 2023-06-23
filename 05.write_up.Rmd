@@ -1,0 +1,157 @@
+---
+title: "Write Up"
+author: "Andie Creel"
+date: "2023-06-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Background 
+
+### Questions of interest: 
+
+  - Substitution between indoor and outdoor rec under different climate scenarios 
+  - How does that substitution change during seasons
+  - How does it change for people living in an urban heat island 
+
+### Data set up: 
+
+1. Coded if something is:
+    - indoor leisure
+        - at home
+        - away from home 
+    - outdoor recreation
+        - at home
+        - away from home 
+2. Calculated quantity demanded for each activity: 
+    - home leisure
+    - away leisure
+    - home recreation
+    - away recreation 
+    - no leisure 
+3. Calculated travel time for activities with positive demand and 0 demand 
+    - Assumed at home activities have travel time of 0 
+    - Away from home activities with positive demand: used travel time from ATUS to get total travel time for activity that day, as well as average travel time per activity (ex. if someone did 5 away leisure activities and spent a total of 60 min traveling for away leisure, their average is 12 and total is 60. )
+    - Away from home activities with 0 demand (no trip): I need to have the travel time even when a trip is not taken. I calculate it in two ways 
+      - group by state, get average travel time and use a person's state's average travel time for a given activity
+      - group by race, "
+4. Merged in county weather by day from Jude's gridMET (only done for 2021)
+
+# 2021 initial results 
+All the data is process, but still need to merge in other years of weather 
+
+## Testing effect of grouping travel by state or race
+
+Currently looking at extensive margin only (did you take a trip) and ignoring all intensive margins (number of trips taken that day, length of trip).
+
+**Dependent variable** is choice probabilities. 
+
+**Reference level** is at home leisure. 
+
+
+```{r, results='asis', message=FALSE}
+rm(list = ls())
+options(scipen = 999)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(vroom)
+library(mlogit)
+library(stargazer)
+library(lubridate)
+
+# -----------------------------------------------------------------------------
+# Read in data
+# -----------------------------------------------------------------------------
+
+myWorking_og <- vroom("clean_data/4.weather_tc_2021.csv") %>%
+  mutate(quarter = quarter(date))
+
+# -----------------------------------------------------------------------------
+# Data cleaning 
+# https://cran.r-project.org/web/packages/mlogit/vignettes/c2.formula.data.html
+# -----------------------------------------------------------------------------
+myLogit_df <- myWorking_og %>%
+  mutate(choice = if_else(number_activities > 0, 1, 0)) %>% # demand is 0/1 (extensive, not intensive)
+  filter(race != "other") %>% # can't have NAs 
+  mutate(variable = as.factor(variable)) %>%
+  filter(!is.na(tmmx)) %>% # dropping people we don't have weather for
+  mutate(race = as.factor(race)) 
+
+#turning into mlogit object
+myLogit_formatted <- dfidx(myLogit_df, idx = list(NA, "variable"))
+
+# -----------------------------------------------------------------------------
+# running regression
+# -----------------------------------------------------------------------------
+
+# using avg travel time that's grouped by race 
+reg1.a<- mlogit(choice ~ travel_time_avg_race | fam_inc_mid + tmmx, # formula
+               myLogit_formatted, #mlogit data object
+               reflevel = "leisure_home", #reference level 
+               alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available (dropped no leisure)
+
+# using avg travel time that's grouped by state 
+reg1.b<- mlogit(choice ~ travel_time_avg_state | fam_inc_mid + tmmx, # formula
+                myLogit_formatted, #mlogit data object
+                reflevel = "leisure_home", #reference level 
+                alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available
+
+# using total travel time that's grouped by race 
+reg1.c<- mlogit(choice ~ travel_time_total_race | fam_inc_mid + tmmx, # formula
+               myLogit_formatted, #mlogit data object
+               reflevel = "leisure_home", #reference level 
+               alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available (dropped no leisure)
+
+# using total travel time that's grouped by state 
+reg1.d<- mlogit(choice ~ travel_time_total_state | fam_inc_mid + tmmx, # formula
+               myLogit_formatted, #mlogit data object
+               reflevel = "leisure_home", #reference level 
+               alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available (dropped no leisure)
+
+stargazer(reg1.a, reg1.b, reg1.c, reg1.d,
+          column.labels = c("avg, race", "avg, state", "total, race", "total, state"),
+          title = "Effect of calculating  no trip travel time differently")
+
+```
+
+It doesn't seem to matter what kind of travel time is used for when people do not take a trip. Travel time is always negative and temperature is always positive. 
+
+## Seasons
+
+```{r, message=FALSE, results='asis'}
+# -----------------------------------------------------------------------------
+# run by season 
+# -----------------------------------------------------------------------------
+
+myQuarterReg <- function(i){
+
+  myWorking_temp <- myLogit_formatted %>%
+    filter(quarter == i) 
+  
+  reg <- mlogit(choice ~ travel_time_avg_state | fam_inc_mid + tmmx, # formula
+                         myWorking_temp, #mlogit data object
+                         reflevel = "leisure_home", #reference level 
+                         alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available (dropped no leisure)
+  
+}
+
+quarterRegs <- lapply(1:4, myQuarterReg)
+
+stargazer(quarterRegs[[1]], quarterRegs[[2]], quarterRegs[[3]], quarterRegs[[4]], 
+          column.labels = c("jan-march", "april-june", "july - sept", "oct - dec"),
+          title = "The effect of temperature changes given the season.")
+```
+
+Temperature has a positive affect on away from home activities in winter, but a negative affect in summer and no affect in the spring and fall. That positive affect seen early may be primarily driven by increased recreation in the the cold months, but could eventually be offset by negative affects in summer. 
+
+
+## Next steps
+
+- get weather merged in for all years 
+- Investigate the affect for different communities
+- Find a map of urban heat islands. 
+
