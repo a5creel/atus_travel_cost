@@ -2,7 +2,7 @@
 title: "Write Up"
 author: "Andie Creel"
 date: "2023-06-23"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -114,8 +114,7 @@ reg1.d<- mlogit(choice ~ travel_time_total_state | fam_inc_mid + tmmx, # formula
 
 stargazer(reg1.a, reg1.b, reg1.c, reg1.d,
           column.labels = c("avg, race", "avg, state", "total, race", "total, state"),
-          title = "Effect of calculating  no trip travel time differently", 
-          type = 'html')
+          title = "Effect of calculating  no trip travel time differently")
 
 ```
 
@@ -144,8 +143,7 @@ quarterRegs <- lapply(1:4, myQuarterReg)
 
 stargazer(quarterRegs[[1]], quarterRegs[[2]], quarterRegs[[3]], quarterRegs[[4]], 
           column.labels = c("jan-march", "april-june", "july - sept", "oct - dec"),
-          title = "The effect of temperature changes given the season.", 
-          type = 'html')
+          title = "The effect of temperature changes given the season.")
 ```
 
 Temperature has a positive affect on away from home activities in winter, but a negative affect in summer and no affect in the spring and fall. That positive affect seen early may be primarily driven by increased recreation in the the cold months, but could eventually be offset by negative affects in summer. 
