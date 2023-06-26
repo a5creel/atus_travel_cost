@@ -80,6 +80,8 @@ I use the income codes and get the lower bound of the bin, the upper bound of th
 ## Step Five 
 how to use mlogit: https://chat.openai.com/share/2e6aec1d-3a2b-4a37-b0fd-9c2b381a6319
 
+[Initial results](https://github.com/a5creel/atus_travel_cost/blob/main/05.write_up.pdf)
+
 
 # Next Steps:
 
