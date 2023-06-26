@@ -16,7 +16,7 @@ library(lubridate)
 # Read in data
 # -----------------------------------------------------------------------------
 
-myWorking_og <- vroom("clean_data/4.weather_tc_2021.csv") %>%
+myWorking_og <- vroom("clean_data/4.weather_tc_ALL.csv") %>%
   mutate(quarter = quarter(date))
 
 # -----------------------------------------------------------------------------

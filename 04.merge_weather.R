@@ -17,25 +17,36 @@ conflict_prefer("filter", "dplyr")
 conflict_prefer("select", "dplyr")
 
 # -----------------------------------------------------------------------------
-# Read in data, clean up 
+# Read in all weather 
 # -----------------------------------------------------------------------------
 
-myTC_og <- vroom("clean_data/3.travel_times_all.csv")
-myWeath_og <- vroom("/Users/a5creel/Dropbox (YSE)/PhD Work/Andie's Prospectus/gridMETr/myOutput/2021_county_all.csv")
-myInc_codes_og <- vroom("raw_data/income_codes.csv") %>%
-  rename(code = Value) %>%
-  rename(bin = Label)
+myWeath_og <- lapply(2003:2021,function(x){ 
+                  vroom(paste0("/Users/a5creel/Dropbox (YSE)/PhD Work/Andie's Prospectus/gridMETr/myOutput/", 
+                               x,
+                               "_county_all.csv"))})
 
-myTC <- myTC_og %>%
-  filter(year == 2021) %>% 
-  mutate(date = as.Date(as.character(date), format = "%Y%m%d")) %>%
-  mutate()
+myWeath_og <- bind_rows(myWeath_og)
+
 
 myWeath <- myWeath_og %>%
   mutate(county = as.numeric(county))
 
 # -----------------------------------------------------------------------------
-# deal with income
+# Read in data, clean up 
+# -----------------------------------------------------------------------------
+
+myTC_og <- vroom("clean_data/3.travel_times_all.csv")
+
+myInc_codes_og <- vroom("raw_data/income_codes.csv") %>%
+  rename(code = Value) %>%
+  rename(bin = Label)
+
+myTC <- myTC_og %>%
+  mutate(date = as.Date(as.character(date), format = "%Y%m%d")) %>%
+  mutate()
+
+# -----------------------------------------------------------------------------
+# create three incomes since income is binned
 # -----------------------------------------------------------------------------
 myInc <- myInc_codes_og %>%
   
@@ -59,16 +70,16 @@ myInc <- myInc_codes_og %>%
 myWorking <- left_join(myTC, myWeath, by = c("county", "date")) %>%
   left_join(myInc, by = c("famincome" = "code"))
 
-# row_na_percentage <- sum(is.na(myWorking$tmmn)) / nrow(myWorking) * 100 # 50% of people dont report county and just say state 
+sum(is.na(myWorking$tmmn)) / nrow(myWorking) * 100 # 56% of obs dont report county and just say state
 
-# row_na_percentage <- sum(is.na(myWorking$fam_inc_low)) / nrow(myWorking) * 100 # 100% of people report their family income
-# row_na_percentage <- sum(myWorking$earnweek != 99999.99) / nrow(myWorking) * 100 # 50% of people report their weekly earnings
+sum(is.na(myWorking$fam_inc_low)) / nrow(myWorking) * 100 # 94% of people report their family income
+sum(myWorking$earnweek != 99999.99) / nrow(myWorking) * 100 # 54% of people report their weekly earnings
 
 # -----------------------------------------------------------------------------
 # Write
 # -----------------------------------------------------------------------------
 
-vroom_write(myWorking, "clean_data/4.weather_tc_2021.csv")
+vroom_write(myWorking, "clean_data/4.weather_tc_ALL.csv")
 
 
 
