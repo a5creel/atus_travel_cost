@@ -1,0 +1,88 @@
+---
+title: "Summary Statistics"
+author: "Andie Creel"
+date: "2023-06-26"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message  = FALSE)
+
+rm(list = ls())
+options(scipen = 999)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(vroom)
+library(mlogit)
+library(stargazer)
+library(lubridate)
+```
+
+## How ofter each activity is choosen
+
+Assuming each choice occasion is a day, and you can choose at home leisure, away leisure, at home recreation, away recreation, or no leisure. Choices have been multiplied by their sampling weight.
+
+```{r}
+# -----------------------------------------------------------------------------
+# Read in data 
+# -----------------------------------------------------------------------------
+
+# need replication weights 
+myDems <- vroom("clean_data/2.demographics_ALL.csv") %>%
+  mutate(wt = wt06) %>%
+  mutate(wt = if_else(year == 2020, wt20, wt06)) %>%
+  select(caseid, year, wt)
+
+myWorking_og <- vroom("clean_data/4.weather_tc_ALL.csv") %>%
+  mutate(quarter = quarter(date)) 
+
+# switching to extensive margin (0/1 choice each day of if you did it or not)
+myWorking <- myWorking_og %>%
+  mutate(choice = if_else(number_activities > 0, 1, 0)) %>%
+  left_join(myDems, by = c("year", "caseid")) #merge
+# -----------------------------------------------------------------------------
+# How often does someone choose each thing (weights accounted for )
+# -----------------------------------------------------------------------------
+
+# divided by 5 because it's long by the 5 activities, multiplied by weight 
+n <- sum(myWorking$wt) /5
+
+myWorking <- myWorking %>%
+  mutate(choice_wt = choice*wt)
+
+df_1 <- data.frame(activity = c("leisure_home", "leisure_away", "recreation_away", "recreation_home", "no_leisure"), percent_days_choosen = NA)
+
+df_1$percent_days_choosen[1] <- as.numeric(sum(myWorking[myWorking$variable == "leisure_home",]$choice_wt)/n)
+df_1$percent_days_choosen[2] <- as.numeric(sum(myWorking[myWorking$variable == "leisure_away",]$choice_wt)/n)
+df_1$percent_days_choosen[3] <- as.numeric(sum(myWorking[myWorking$variable == "rec_home",]$choice_wt)/n)
+df_1$percent_days_choosen[4] <- as.numeric(sum(myWorking[myWorking$variable == "rec_away",]$choice_wt)/n)
+df_1$percent_days_choosen[5] <- as.numeric(sum(myWorking[myWorking$variable == "no_leisure",]$choice_wt)/n)
+
+df_1 <- df_1 %>% 
+  mutate(percent_days_choosen = round(percent_days_choosen *100, 1))
+  
+
+df_1
+
+
+```
+
+#### by season
+
+```{r}
+
+```
+
+# next steps 
+
+- avg income, whiteness, and minutes spent on activities after dropping obs w/o weather 
+- map of counties who I have data for 
+- avg by racae 
+- avg minutes doing each activity through years 
+- show through season too 
+
+
+
+

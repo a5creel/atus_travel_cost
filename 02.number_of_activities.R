@@ -41,12 +41,24 @@ cleanYears <-function(extract, file_names){
   names(myWorking_temp) <- tolower(names(myWorking_temp))
     
   # Creating individual demographics file (to be merged in later)
-  myDemographics <- myWorking_temp %>%
-    select(year, statefip, county, caseid, 
-           age, sex, race, hispan, marst, citizen, educyrs, 
-           earnweek, hourwage, famincome) %>%
-    mutate(caseid = format(caseid, scientific = FALSE)) %>%
-    distinct()
+  if (file_names == "2013-2021") {
+    myDemographics <- myWorking_temp %>%
+      select(year, statefip, county, caseid, 
+             age, sex, race, hispan, marst, citizen, educyrs, 
+             earnweek, hourwage, famincome, 
+             wt06, wt20) %>%
+      mutate(caseid = format(caseid, scientific = FALSE)) %>%
+      distinct()
+  } else{
+    myDemographics <- myWorking_temp %>%
+      select(year, statefip, county, caseid, 
+             age, sex, race, hispan, marst, citizen, educyrs, 
+             earnweek, hourwage, famincome, 
+             wt06) %>%
+      mutate(caseid = format(caseid, scientific = FALSE)) %>%
+      distinct()
+  }
+  
   
   vroom_write(myDemographics, paste0("clean_data/2.demographics_", file_names, ".csv"), delim = ",")
   
