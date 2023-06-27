@@ -18,6 +18,9 @@ library(vroom)
 library(mlogit)
 library(stargazer)
 library(lubridate)
+library(choroplethr)
+library(choroplethrMaps)
+data("county.regions")
 ```
 
 ## How ofter each activity is choosen
@@ -26,60 +29,157 @@ Assuming each choice occasion is a day, and you can choose at home leisure, away
 
 ```{r}
 # -----------------------------------------------------------------------------
+# read in R memory built in 05.R_data_objs
+# -----------------------------------------------------------------------------
+load("05.RUM_data_objs.RData")
+
+# -----------------------------------------------------------------------------
 # Read in data 
 # -----------------------------------------------------------------------------
 
 # need replication weights 
-myDems <- vroom("clean_data/2.demographics_ALL.csv") %>%
+myWts <- vroom("clean_data/2.demographics_ALL.csv") %>%
   mutate(wt = wt06) %>%
   mutate(wt = if_else(year == 2020, wt20, wt06)) %>%
   select(caseid, year, wt)
 
-myWorking_og <- vroom("clean_data/4.weather_tc_ALL.csv") %>%
-  mutate(quarter = quarter(date)) 
+myWorking_og <- vroom("clean_data/4.weather_tc_ALL.csv") 
 
-# switching to extensive margin (0/1 choice each day of if you did it or not)
 myWorking <- myWorking_og %>%
-  mutate(choice = if_else(number_activities > 0, 1, 0)) %>%
-  left_join(myDems, by = c("year", "caseid")) #merge
+  mutate(choice = if_else(number_activities > 0, 1, 0)) %>% # switching to extensive margin 
+  left_join(myWts, by = c("year", "caseid")) %>% # merge in weights 
+  mutate(choice_wt = choice*wt) # weighted
+
 # -----------------------------------------------------------------------------
 # How often does someone choose each thing (weights accounted for )
 # -----------------------------------------------------------------------------
 
-# divided by 5 because it's long by the 5 activities, multiplied by weight 
-n <- sum(myWorking$wt) /5
+# function that takes as df and returns % of days of each activity is choosen 
+getPercTable <- function(df){
 
-myWorking <- myWorking %>%
-  mutate(choice_wt = choice*wt)
-
-df_1 <- data.frame(activity = c("leisure_home", "leisure_away", "recreation_away", "recreation_home", "no_leisure"), percent_days_choosen = NA)
-
-df_1$percent_days_choosen[1] <- as.numeric(sum(myWorking[myWorking$variable == "leisure_home",]$choice_wt)/n)
-df_1$percent_days_choosen[2] <- as.numeric(sum(myWorking[myWorking$variable == "leisure_away",]$choice_wt)/n)
-df_1$percent_days_choosen[3] <- as.numeric(sum(myWorking[myWorking$variable == "rec_home",]$choice_wt)/n)
-df_1$percent_days_choosen[4] <- as.numeric(sum(myWorking[myWorking$variable == "rec_away",]$choice_wt)/n)
-df_1$percent_days_choosen[5] <- as.numeric(sum(myWorking[myWorking$variable == "no_leisure",]$choice_wt)/n)
-
-df_1 <- df_1 %>% 
-  mutate(percent_days_choosen = round(percent_days_choosen *100, 1))
+  # divided by 5 because it's long by the 5 activities, multiplied by weight 
+  n <- sum(df$wt) /5
   
+  sumTable <- data.frame(activity = c("leisure_home", "leisure_away", "recreation_away", "recreation_home", "no_leisure", "obs"), percent_days_choosen = NA)
+  
+  sumTable$percent_days_choosen[1] <- as.numeric(sum(df[df$variable == "leisure_home",]$choice_wt)/n)
+  sumTable$percent_days_choosen[2] <- as.numeric(sum(df[df$variable == "leisure_away",]$choice_wt)/n)
+  sumTable$percent_days_choosen[3] <- as.numeric(sum(df[df$variable == "rec_home",]$choice_wt)/n)
+  sumTable$percent_days_choosen[4] <- as.numeric(sum(df[df$variable == "rec_away",]$choice_wt)/n)
+  sumTable$percent_days_choosen[5] <- as.numeric(sum(df[df$variable == "no_leisure",]$choice_wt)/n)
+  sumTable$percent_days_choosen[6] <- nrow(df)/5
+  
+  sumTable <- sumTable %>% 
+    mutate(percent_days_choosen = round(percent_days_choosen *100, 1)) 
+  
+  sumTable
+}
 
-df_1
-
+getPercTable(myWorking)
 
 ```
 
-#### by season
+## by season
 
 ```{r}
+# -----------------------------------------------------------------------------
+# Grouping by season 
+# -----------------------------------------------------------------------------
+
+# my season function 
+seasonTables <- lapply(X = 1:4, function(x){
+  myWorking %>%
+    filter(quarter == x) %>%
+    getPercTable() %>% 
+    mutate(!!sym(paste0("quarter_", x)) := percent_days_choosen)%>%
+    select(sym(paste0("quarter_", x)))})
+
+bind_cols(activity = c("leisure_home", "leisure_away", "recreation_away", "recreation_home", "no_leisure", "obs"), 
+          seasonTables)
+
 
 ```
+
+## Comparing full sample to my sample with weather 
+
+When I run the RUM model, I drop people who do "no leisure" because they're less than 1% of the population. 
+
+Weather is an independent variable but only have if for half so comparing full set to set I use for RUM model. 
+
+Most of the data is dropped due to missing weather, some is dropped due to not having income.
+
+```{r}
+# -----------------------------------------------------------------------------
+# get some key averages
+# -----------------------------------------------------------------------------
+
+getKeyAvgs <- function(df){
+
+  # full data set 
+  sumTable <- data.frame(metric = c("income", "% white", "min travel for leisure away", "min travl for rec away", "n"),
+                         average = NA)
+  
+  mySum_df_leisure <- df %>%
+    select(caseid, year, fam_inc_mid, travel_time_total_state, variable, race) %>%
+    filter(variable == "leisure_away") %>%
+    distinct()
+  
+  mySum_df_rec <- df %>%
+    select(caseid, year, fam_inc_mid, travel_time_total_state, variable, race) %>%
+    filter(variable == "rec_away") %>%
+    distinct()
+  
+  sumTable$average[1] <- mean(mySum_df_leisure$fam_inc_mid, na.rm = T)
+  sumTable$average[2] <- as.numeric(round(sum(mySum_df_leisure$race == "white_noH") / nrow(mySum_df_leisure) *100, 1))
+  sumTable$average[3] <- mean(mySum_df_leisure$travel_time_total_state)
+  sumTable$average[4] <- mean(mySum_df_rec$travel_time_total_state)
+  sumTable$average[5] <- as.integer(nrow(mySum_df_leisure))
+  
+  sumTable
+}
+
+df_1 <-  myWorking %>%
+  filter(variable != "no_leisure") %>%
+  getKeyAvgs() %>%
+  mutate(average_full_dataset = average) %>%
+  select(average_full_dataset)
+
+df_2 <- getKeyAvgs(myRUM_df) %>%
+  mutate(average_RUM_dataset = average) %>%
+  select(average_RUM_dataset)
+
+bind_cols(metric = c("income", "% white", "min travel for leisure away", "min travl for rec away", "n"), df_1, df_2)
+
+```
+
+## Map of counties I have data for
+
+```{r}
+myCounties <- myRUM_df %>%
+  select(county) %>%
+  distinct() %>%
+  mutate(value = 1)
+
+myCounties_map <- left_join(county.regions, myCounties, by = c("region" = "county")) %>%
+  mutate(value = if_else(is.na(value), 0, value))
+
+# county_choropleth(myCounties_map)
+
+# WAITING UNTIL CHOROPLETH IS UPDATED.
+
+
+```
+
+
+## Average minutes doing activity 
+
+
+
 
 # next steps 
 
-- avg income, whiteness, and minutes spent on activities after dropping obs w/o weather 
 - map of counties who I have data for 
-- avg by racae 
+- avg by race 
 - avg minutes doing each activity through years 
 - show through season too 
 

@@ -68,7 +68,8 @@ myInc <- myInc_codes_og %>%
 # -----------------------------------------------------------------------------
 
 myWorking <- left_join(myTC, myWeath, by = c("county", "date")) %>%
-  left_join(myInc, by = c("famincome" = "code"))
+  left_join(myInc, by = c("famincome" = "code"))%>%
+  mutate(quarter = quarter(date)) 
 
 sum(is.na(myWorking$tmmn)) / nrow(myWorking) * 100 # 56% of obs dont report county and just say state
 

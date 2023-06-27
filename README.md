@@ -66,7 +66,6 @@ I do this in two ways for both average travel time and total travel time:
 
 I include when people do an activity away from home but record 0 travel time. I figured these are trips where someone does leisure or recreation while running errands, so they genuinely don't have travel time. If these are trips with a real travel cost of 0, those should be included in averages. Ex. Stopping  at the park while running errands.
 
-**a lot of missing income!!**
 
 ## Step Four
 Merges in weather **and family income**. 
