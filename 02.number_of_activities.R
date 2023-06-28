@@ -14,14 +14,14 @@ library(devtools)
 # Turn this into a function so I can run it over the years
 ###############################################################################
 
-cleanYears <-function(extract, file_names){
-  
+cleanYears <-function(file_names){
+
   # -----------------------------------------------------------------------------
   # Load data downloaded from IPUMS (code provided by IPUMS) and activity codes
   # atus_00003 only has 2017 - 2022
   # -----------------------------------------------------------------------------
-  ddi <- read_ipums_ddi(paste0("raw_data/atus_", extract, ".xml")) #reads in code book
-  myData <- read_ipums_micro(ddi) # reads in data 
+  # ddi <- read_ipums_ddi(paste0("raw_data/atus_", extract, ".xml")) #reads in code book
+  myData <-vroom(paste0("clean_data/1.atus_", file_names, ".csv")) # reads in data 
   
   myCodes <- vroom("clean_data/my_codes.csv") %>%
     filter(my_code == 1) %>% #should be included
@@ -201,8 +201,8 @@ cleanYears <-function(extract, file_names){
 # Run (only need to run once) (NOTE: average and total are correct here. )
 ###############################################################################
 
-cleanYears("00004", "2013-2021")
-cleanYears("00005", "2003-2012")
+cleanYears("2013-2021")
+cleanYears("2003-2012")
 
 ###############################################################################
 # Merge all files into one 
@@ -224,6 +224,34 @@ myNum2 <- vroom("clean_data/2.num_activities_long_2013-2021.csv")
 myNum <- bind_rows(myNum1, myNum2)
 
 vroom_write(myNum, "clean_data/2.num_activities_ALL.csv")
+
+# -----------------------------------------------------------------------------
+# Get wide orginal data
+# -----------------------------------------------------------------------------
+
+# reads in data
+myData_1 <- vroom("clean_data/1.ATUS_2013-2021.csv")
+myData_2 <- vroom("clean_data/1.ATUS_2003-2012.csv")
+
+
+myData_1 <- myData_1 %>%
+  select(YEAR, CASEID, METAREA, COUNTY, DATE, WT06, WT20, ACTIVITY, WHERE, DURATION, INTERACT)
+
+myData_2 <- myData_2 %>%
+  select(YEAR, CASEID, METAREA, COUNTY, DATE, WT06, ACTIVITY, WHERE, DURATION, INTERACT)
+
+myData_og <- bind_rows(myData_1, myData_2)
+
+myCodes <- vroom("clean_data/1.my_codes.csv")
+
+myData <- left_join(myData_og, myCodes, by = c("ACTIVITY" = "act_code")) %>%
+  mutate(time_recreating_away_temp = if_else(WHERE == 109, DURATION*outdoor_rec, 0)) %>%
+  mutate(time_recreating_home_temp = if_else(WHERE != 109, DURATION*outdoor_rec, 0)) %>%
+  mutate(time_leisure_home_temp = if_else(WHERE == 101 | WHERE == 103, DURATION*indoor_leisure, 0)) %>%
+  mutate(time_leisure_away_temp = if_else(WHERE != 101 & WHERE != 103, DURATION*indoor_leisure, 0)) 
+
+
+vroom_write(myData, "clean_data/2.ATUS_wide_og.csv")
 
 
 

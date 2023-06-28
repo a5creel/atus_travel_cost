@@ -75,6 +75,20 @@ myCodes <- myCodes %>%
 
 vroom_write(myCodes, "clean_data/1.my_codes.csv", delim = ",") # writing to clean data folder 
 
+# -----------------------------------------------------------------------------
+# raw ATUS data 
+# -----------------------------------------------------------------------------
 
+#reads in code book
+ddi_1 <- read_ipums_ddi(paste0("raw_data/atus_00004.xml")) 
+ddi_2 <- read_ipums_ddi(paste0("raw_data/atus_00005.xml")) 
 
+# reads in data
+myData_1 <- read_ipums_micro(ddi_1)
+myData_2 <- read_ipums_micro(ddi_2) 
+
+# write
+
+vroom_write(myData_1, "clean_data/1.atus_2013-2021.csv")
+vroom_write(myData_2, "clean_data/1.atus_2003-2012.csv")
   

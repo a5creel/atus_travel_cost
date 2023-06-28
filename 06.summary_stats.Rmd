@@ -21,6 +21,9 @@ library(lubridate)
 library(choroplethr)
 library(choroplethrMaps)
 data("county.regions")
+library(ipumsr)
+
+
 ```
 
 ## How ofter each activity is choosen
@@ -172,6 +175,53 @@ myCounties_map <- left_join(county.regions, myCounties, by = c("region" = "count
 
 
 ## Average minutes doing activity 
+
+```{r}
+# -----------------------------------------------------------------------------
+# Where I got the caluation for average take spent recreating per day
+# In zotero: “American Time Use Survey User’s Guide,” 2022, 125.
+# -----------------------------------------------------------------------------
+
+get_avg_rec_min <- function(df){
+  sum(df$sample_weight*df$total_min_rec)/sum(df$sample_weight)
+}
+
+# -----------------------------------------------------------------------------
+# read in data
+# -----------------------------------------------------------------------------
+
+myData_og <- vroom("clean_data/2.ATUS_wide_og.csv")
+myDems <- vroom("clean_data/2.demographics_ALL.csv")
+
+
+myData <- myData_og %>%
+  group_by(DATE, CASEID) %>%
+  mutate(total_rec_away = sum(time_recreating_away_temp, na.rm = T)) %>%
+  mutate(total_rec_home = sum(time_recreating_home_temp, na.rm = T)) %>%
+  mutate(total_leisure_home = sum(time_leisure_home_temp, na.rm = T)) %>%
+  mutate(total_leisure_away = sum(time_leisure_away_temp, na.rm = T)) %>%
+  select(YEAR, CASEID, DATE, starts_with("total"), WT06, WT20) %>%
+  distinct() %>%
+  mutate(WT = if_else(YEAR != 2020, WT06, WT20)) %>%
+  select(-WT06, -WT20)     
+
+myData_next <- myData %>%
+  group_by(YEAR) %>%
+  mutate(mean_rec_away = sum(WT*total_rec_away)/sum(WT)) %>%
+  mutate(mean_rec_home = sum(WT*total_rec_home)/sum(WT)) %>%
+  mutate(mean_leisure_away = sum(WT*total_leisure_away)/sum(WT)) %>%
+  mutate(mean_leisure_home = sum(WT*total_leisure_home)/sum(WT)) %>%
+  select(YEAR, mean_rec_away, mean_rec_home, mean_leisure_away, mean_leisure_home) %>%
+  distinct()
+           
+
+
+
+```
+
+
+
+
 
 
 
