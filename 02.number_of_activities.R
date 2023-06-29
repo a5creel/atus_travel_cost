@@ -248,7 +248,12 @@ myData <- left_join(myData_og, myCodes, by = c("ACTIVITY" = "act_code")) %>%
   mutate(time_recreating_away_temp = if_else(WHERE == 109, DURATION*outdoor_rec, 0)) %>%
   mutate(time_recreating_home_temp = if_else(WHERE != 109, DURATION*outdoor_rec, 0)) %>%
   mutate(time_leisure_home_temp = if_else(WHERE == 101 | WHERE == 103, DURATION*indoor_leisure, 0)) %>%
-  mutate(time_leisure_away_temp = if_else(WHERE != 101 & WHERE != 103, DURATION*indoor_leisure, 0)) 
+  mutate(time_leisure_away_temp = if_else(WHERE != 101 & WHERE != 103, DURATION*indoor_leisure, 0)) %>%
+  mutate(DATE = as.Date(as.character(DATE), format = "%Y%m%d")) %>%
+  mutate(QUARTER = quarter(DATE)) 
+
+# lower case 
+names(myData) <- tolower(names(myData))
 
 
 vroom_write(myData, "clean_data/2.ATUS_wide_og.csv")

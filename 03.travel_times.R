@@ -64,6 +64,9 @@ myDem_race <- myDems_og %>%
   rename(race = my_race) %>%
   select(caseid, year, statefip, race, county, hourwage, earnweek, famincome)
   
+vroom_write(myDem_race, "clean_data/3.demographics_cleaned.csv")
+
+
 # -----------------------------------------------------------------------------
 # Function to calculate average and total travel time for a grouping variable for:
 #   away from home leisure 

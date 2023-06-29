@@ -74,15 +74,27 @@ This uses Jude Bayham's [gridMET repository](https://github.com/a5creel/gridMETr
 
 I use the income codes and get the lower bound of the bin, the upper bound of the bin, and the midpoint of the binned income. 100% of respondents in 2021 reported this income, whereas only ~50% report their weekly earning. 
 
-**ATTN:** I need to address that this cna only be set identified with income ! 
+**ATTN:** I need to address that this can only be set identified with income ! 
 
 ## Step Five 
 how to use mlogit: https://chat.openai.com/share/2e6aec1d-3a2b-4a37-b0fd-9c2b381a6319
 
 [Initial results](https://github.com/a5creel/atus_travel_cost/blob/main/05.write_up.pdf)
 
+## Step Six
+Summary statistics (see pdf)
+
 
 # Next Steps:
+
+- clean up mlogit output 
+    - precipitation would be a very good gut check 
+- two-way fixed effects literature 
+    - NBER working paper: de Chaisemartin, C., D'Haultfoeuille, X., 2022. Two-way fixed effects and differences-in-differences with heterogeneous treatment effects: a survey. National Bureau of Economic Research Work Paper 29691. 
+    - easy read
+    - are there linear probabilities model that i can use to gut check the structural parameters with some reduced-form stuff 
+- park or not 
+
 
 - create a different race indicator (over identified)
   - investigate just white vs black ? 
