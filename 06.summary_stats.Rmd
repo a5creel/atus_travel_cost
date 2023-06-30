@@ -11,6 +11,8 @@ knitr::opts_chunk$set(message  = FALSE)
 
 rm(list = ls())
 options(scipen = 999)
+devtools::install_github("UrbanInstitute/urbnmapr")
+library(urbnmapr) # For map
 library(dplyr)
 library(tidyr)
 library(stringr)
@@ -158,27 +160,33 @@ bind_cols(metric = c("income", "% white", "min travel for leisure away", "min tr
 
 Seems like currently I'm dropping white poor people (which makes me think I'm dropping rural people). 
 
-
 # Map of counties I have data for
 
-Unfortunately the choropleth package isn't compatable with the newest verison of R so I'm waiting for it to be updated to do this. 
-
-```{r, eval=FALSE}
+```{r}
 myCounties <- myRUM_df %>%
   select(county) %>%
   distinct() %>%
   mutate(value = 1)
 
-myCounties_map <- left_join(county.regions, myCounties, by = c("region" = "county")) %>%
-  mutate(value = if_else(is.na(value), 0, value))
+counties_sf_og <- get_urbn_map(map = "counties", sf = TRUE)
+counties_sf <- get_urbn_map(map = "counties", sf = TRUE)
 
-# myCounty_choropleth(myCounties_map)
+counties_sf <- counties_sf_og %>%
+  mutate(county_fips = as.numeric(county_fips))
 
-# WAITING UNTIL CHOROPLETH IS UPDATED.
+myMap <- left_join(counties_sf, myCounties, by =c("county_fips" = "county"))
+
+myMap %>%
+  ggplot() +
+  geom_sf(mapping = aes(fill = value), color = NA) +
+  geom_sf(data = counties_sf_og, fill = NA, color = "black", size = 0.25) +
+  coord_sf(datum = NA) +   
+  scale_fill_gradient(na.value="white") +
+  theme_bw() + theme(legend.position="bottom", panel.border = element_blank()) +
+  ggtitle("Counties that I currrently have data for")
 
 
 ```
-
 
 # Avg min doing activity 
 
@@ -241,7 +249,6 @@ plot_leisure_1 <- ggplot(myGraph_leisure, aes(x = year, y = minutes, color = act
   ggtitle("Avg min on leisure per day") +
   theme_bw()
 
-
 ```
  
 
@@ -260,11 +267,7 @@ plot_rec_1 <- ggplot(myGraph_rec, aes(x = year, y = minutes, color = activity)) 
   ggtitle("Avg min on recreation per day") +
   theme_bw()
 
-
 ```
-
-
-
 
 
 ```{r}
@@ -314,8 +317,6 @@ plot_leisure_2 <- ggplot(mySeasons_leisure, aes(x = year_q, y = minutes, color =
   scale_color_discrete(name = "activity") +
   ggtitle("Avg min on leisure per day") +
   theme_bw()
-
-
 
 ```
 
@@ -464,10 +465,7 @@ plot_race_4 <-ggplot(myRace_rec_away, aes(x = year, y = minutes, color = race_1)
 grid.arrange(plot_race_1, plot_race_2, plot_race_3, plot_race_4, nrow = 2, ncol = 2)
 ```
 
-
-
 Black people participate in much more leisure at home. 
-
 
 Black and Asian people do less recreation at home, and black people participate in much less recreation in general. 
 
