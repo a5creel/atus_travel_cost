@@ -94,6 +94,8 @@ Summary statistics (see pdf)
     - easy read
     - are there linear probabilities model that i can use to gut check the structural parameters with some reduced-form stuff 
 - park or not 
+- adjust for cost of living: https://www.bankrate.com/real-estate/cost-of-living-calculator/ (This is a question to maybe ask at camp resources.)
+
 
 
 - create a different race indicator (over identified)

@@ -23,8 +23,6 @@ library(lubridate)
 # library(choroplethr) #https://github.com/arilamstein/choroplethr
 library(choroplethrMaps)
 data("county.regions")
-# library(R6)
-# source("06.functions.R") #https://github.com/arilamstein/choroplethr/blob/master/R/usa.R#L24
 library(ggplot2)
 library(gridExtra)
 ```
