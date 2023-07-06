@@ -42,11 +42,25 @@ myRUM_df <- myWorking_og %>%
   # drop no income 
   filter(!is.na(fam_inc_mid))
 
-#turning into mlogit object
-myRUM_idx <- dfidx(myRUM_df, idx = list(NA, "variable")) 
+# -----------------------------------------------------------------------------
+# CHANGING NAMES.
+# -----------------------------------------------------------------------------
+myRUM_df <- myRUM_df %>%
+  rename(activity = variable) %>%
+  mutate(activity = if_else(activity == "rec_away", "outdoor_away", activity)) %>%
+  mutate(activity = if_else(activity == "rec_home", "outdoor_home", activity)) %>%
+  mutate(activity = if_else(activity == "leisure_away", "indoor_away", activity)) %>%
+  mutate(activity = if_else(activity == "leisure_home", "indoor_home", activity)) 
 
+
+# -----------------------------------------------------------------------------
+# turning into mlogit object
+# -----------------------------------------------------------------------------
+
+myRUM_idx <- dfidx(myRUM_df, idx = list(NA, "activity")) 
 
 rm(myWorking_og)
+
 # -----------------------------------------------------------------------------
 # save r data
 # -----------------------------------------------------------------------------

@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ### Questions of interest: 
 
-  - Substitution between indoor and outdoor rec under different climate scenarios 
+  - Substitution between indoor and outdoor leisure under different climate scenarios 
   - How does that substitution change during seasons
   - How does it change for people living in an urban heat island 
 
@@ -40,8 +40,6 @@ knitr::opts_chunk$set(echo = FALSE)
       - group by race, "
 4. Merged in county weather by day from Jude's gridMET (only done for 2021)
 
-# 2021 initial results 
-All the data is process, but still need to merge in other years of weather 
 
 ## Testing effect of grouping travel by state or race
 
@@ -75,29 +73,30 @@ load("05.RUM_data_objs.RData")
 # using avg travel time that's grouped by race 
 reg1.a<- mlogit(choice ~ travel_time_avg_race | fam_inc_mid + tmmx, # formula
                myRUM_idx, #mlogit data object
-               reflevel = "leisure_home") #reference level 
+               reflevel = "indoor_home") #reference level 
 
 # using avg travel time that's grouped by state 
 reg1.b<- mlogit(choice ~ travel_time_avg_state | fam_inc_mid + tmmx, # formula
                 myRUM_idx, #mlogit data object
-                reflevel = "leisure_home", #reference level 
-                alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available
+                reflevel = "indoor_home", #reference level 
+                alt.subset = c("indoor_home", "indoor_away", "outdoor_home", "outdoor_away")) # choices available
 
 # using total travel time that's grouped by race 
 reg1.c<- mlogit(choice ~ travel_time_total_race | fam_inc_mid + tmmx, # formula
                myRUM_idx, #mlogit data object
-               reflevel = "leisure_home", #reference level 
-               alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available (dropped no leisure)
+               reflevel = "indoor_home", #reference level 
+               alt.subset = c("indoor_home", "indoor_away", "outdoor_home", "outdoor_away")) # choices available (dropped no leisure)
 
 # using total travel time that's grouped by state 
 reg1.d<- mlogit(choice ~ travel_time_total_state | fam_inc_mid + tmmx, # formula
                myRUM_idx, #mlogit data object
-               reflevel = "leisure_home", #reference level 
-               alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available (dropped no leisure)
+               reflevel = "indoor_home", #reference level 
+               alt.subset = c("indoor_home", "indoor_away", "outdoor_home", "outdoor_away")) # choices available (dropped no leisure)
 
 stargazer(reg1.a, reg1.b, reg1.c, reg1.d,
           column.labels = c("avg, race", "avg, state", "total, race", "total, state"),
-          title = "Effect of calculating  no trip travel time differently")
+          title = "Effect of calculating  no trip travel time differently",
+          type = "text")
 
 ```
 
@@ -117,16 +116,17 @@ myQuarterReg <- function(i){
   
   reg <- mlogit(choice ~ travel_time_avg_state | fam_inc_mid + tmmx, # formula
                          myWorking_temp, #mlogit data object
-                         reflevel = "leisure_home", #reference level 
-                         alt.subset = c("leisure_home", "leisure_away", "rec_home", "rec_away")) # choices available (dropped no leisure)
+                         reflevel = "indoor_home", #reference level 
+                         alt.subset = c("indoor_home", "indoor_away", "outdoor_home", "outdoor_away")) # choices available (dropped no leisure)
   
 }
 
 quarterRegs <- lapply(1:4, myQuarterReg)
 
-stargazer(quarterRegs[[1]], quarterRegs[[2]], quarterRegs[[3]], quarterRegs[[4]], 
+stargazer(quarterRegs, 
           column.labels = c("jan-march", "april-june", "july - sept", "oct - dec"),
-          title = "The effect of temperature changes given the season.")
+          title = "The effect of temperature changes given the season.",
+          type = "text")
 ```
 
 Temperature has a positive affect on away from home activities in winter, but a negative affect in summer and no affect in the spring and fall. That positive affect seen early may be primarily driven by increased recreation in the the cold months, but could eventually be offset by negative affects in summer. 

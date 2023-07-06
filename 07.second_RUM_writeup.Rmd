@@ -1,0 +1,84 @@
+---
+title: "Second Write Up on RUM model"
+author: "Andie Creel"
+date: "2023-07-06"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message  = FALSE)
+```
+
+# Questions of interest: 
+
+  - Substitution between indoor and outdoor leisure under different climate scenarios 
+  - How does that substitution change during seasons
+  - How does it change for people living in an urban heat island 
+  
+Note: all results are on the extensive margin (did you take a trip that week or not). 
+
+From the 05.write_up.pdf I found that constructing the travel cost for no trips is fairly robust, regardless of if I'm using total travel time or average travel time per trip, as well as if I'm grouping by race or state. 
+
+In this write up, I use **total travel time grouped by state** to get the cost when people don't take a trip. 
+
+
+# RUM model 
+
+```{r}
+rm(list = ls())
+options(scipen = 999)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(vroom)
+library(mlogit)
+library(stargazer)
+# library(lubridate)
+
+# -----------------------------------------------------------------------------
+# read in R memory built in R_data_objs
+# -----------------------------------------------------------------------------
+load("05.RUM_data_objs.RData")
+
+# -----------------------------------------------------------------------------
+# preferred reg specification (total travel time grouped by state)
+# -----------------------------------------------------------------------------
+
+# income not included
+reg1.a <- mlogit(choice ~ travel_time_total_state |  tmmx, # formula
+               myRUM_idx, #mlogit data object
+               reflevel = "indoor_home", #reference level 
+               alt.subset = c("indoor_home", "indoor_away", "outdoor_home", "outdoor_away")) # choices available (dropped no leisure)
+
+# income included 
+reg1.b <- mlogit(choice ~ travel_time_total_state | fam_inc_mid + tmmx, # formula
+               myRUM_idx, 
+               reflevel = "indoor_home",  
+               alt.subset = c("indoor_home", "indoor_away", "outdoor_home", "outdoor_away")) 
+
+stargazer(reg1.a, reg1.b,
+          title = "Preferred model (entire year)",
+          type = "text")
+
+```
+I'm currently going to work with the regression where income is not included because the estimates are robust. The numeraire is currently minutes. 
+
+# Marginal Effects 
+
+START HERE . 
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+

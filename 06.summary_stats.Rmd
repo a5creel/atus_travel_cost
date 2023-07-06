@@ -20,7 +20,7 @@ library(vroom)
 library(mlogit)
 library(stargazer)
 library(lubridate)
-library(choroplethr)
+# library(choroplethr) #https://github.com/arilamstein/choroplethr
 library(choroplethrMaps)
 data("county.regions")
 # library(R6)
@@ -29,9 +29,11 @@ library(ggplot2)
 library(gridExtra)
 ```
 
-# How ofter each activity is choosen
+# How often is indoor vs outdoor leisure is choosen
 
-Assuming each choice occasion is a day, and you can choose at home leisure, away leisure, at home recreation, away recreation, or no leisure. Choices have been multiplied by their sampling weight.
+Assuming each choice occasion is a day, and an individual can choose indoor or outdoor leisure either at home or away from home. An individual can also choose no leisure. 
+
+Choices have been multiplied by their sampling weight.
 
 ```{r}
 # -----------------------------------------------------------------------------
@@ -66,13 +68,13 @@ getPercTable <- function(df){
   # divided by 5 because it's long by the 5 activities, multiplied by weight 
   n <- sum(df$wt) /5
   
-  sumTable <- data.frame(activity = c("leisure_home", "leisure_away", "recreation_away", "recreation_home", "no_leisure", "obs"), percent_days_choosen = NA)
+  sumTable <- data.frame(activity = c("indoor_home", "indoor_away", "outdoor_away", "outdoor_home", "no_leisure", "obs"), percent_days_choosen = NA)
   
-  sumTable$percent_days_choosen[1] <- as.numeric(sum(df[df$variable == "leisure_home",]$choice_wt)/n)
-  sumTable$percent_days_choosen[2] <- as.numeric(sum(df[df$variable == "leisure_away",]$choice_wt)/n)
-  sumTable$percent_days_choosen[3] <- as.numeric(sum(df[df$variable == "rec_home",]$choice_wt)/n)
-  sumTable$percent_days_choosen[4] <- as.numeric(sum(df[df$variable == "rec_away",]$choice_wt)/n)
-  sumTable$percent_days_choosen[5] <- as.numeric(sum(df[df$variable == "no_leisure",]$choice_wt)/n)
+  sumTable$percent_days_choosen[1] <- as.numeric(sum(df[df$activity == "indoor_home",]$choice_wt)/n)
+  sumTable$percent_days_choosen[2] <- as.numeric(sum(df[df$activity == "indoor_away",]$choice_wt)/n)
+  sumTable$percent_days_choosen[3] <- as.numeric(sum(df[df$activity == "outdoor_home",]$choice_wt)/n)
+  sumTable$percent_days_choosen[4] <- as.numeric(sum(df[df$activity == "outdoor_away",]$choice_wt)/n)
+  sumTable$percent_days_choosen[5] <- as.numeric(sum(df[df$activity == "no_leisure",]$choice_wt)/n)
   sumTable$percent_days_choosen[6] <- nrow(df)/5
   
   sumTable <- sumTable %>% 
@@ -85,7 +87,7 @@ getPercTable(myWorking)
 
 ```
 
-## by season
+## by quarter
 
 ```{r}
 # -----------------------------------------------------------------------------
@@ -100,7 +102,7 @@ seasonTables <- lapply(X = 1:4, function(x){
     mutate(!!sym(paste0("quarter_", x)) := percent_days_choosen)%>%
     select(sym(paste0("quarter_", x)))})
 
-bind_cols(activity = c("leisure_home", "leisure_away", "recreation_away", "recreation_home", "no_leisure", "obs"), 
+bind_cols(activity = c("indoor_home", "indoor_away", "outdoor_away", "outdoor_home", "no_leisure", "obs"), 
           seasonTables)
 
 
@@ -110,7 +112,7 @@ bind_cols(activity = c("leisure_home", "leisure_away", "recreation_away", "recre
 
 When I run the RUM model, I drop people who do "no leisure" because they're less than 1% of the population. 
 
-ATTN: Weather is an independent variable but only have if for half so comparing full set to set I use for RUM model. I need to see if I can merge county weather on MSA's, I think that's why I'm loosing so many observations. 
+ATTN: Weather is an independent variable but only have if for half of observations so comparing full set to set I use for RUM model. I need to see if I can merge county weather on MSA's, I think that's why I'm loosing so many observations. 
 
 Most of the data is dropped due to missing weather, some is dropped due to not having income.
 
@@ -125,27 +127,27 @@ getKeyAvgs <- function(df){
   sumTable <- data.frame(metric = c("income", "% white", "min travel for leisure away", "min travl for rec away", "n"),
                          average = NA)
   
-  mySum_df_leisure <- df %>%
-    select(caseid, year, fam_inc_mid, travel_time_total_state, variable, race) %>%
-    filter(variable == "leisure_away") %>%
+  mySum_df_indoor <- df %>%
+    select(caseid, year, fam_inc_mid, travel_time_total_state, activity, race) %>%
+    filter(activity == "indoor_away") %>%
     distinct()
   
-  mySum_df_rec <- df %>%
-    select(caseid, year, fam_inc_mid, travel_time_total_state, variable, race) %>%
-    filter(variable == "rec_away") %>%
+  mySum_df_outdoor <- df %>%
+    select(caseid, year, fam_inc_mid, travel_time_total_state, activity, race) %>%
+    filter(activity == "outdoor_away") %>%
     distinct()
   
-  sumTable$average[1] <- mean(mySum_df_leisure$fam_inc_mid, na.rm = T)
-  sumTable$average[2] <- as.numeric(round(sum(mySum_df_leisure$race == "white_noH") / nrow(mySum_df_leisure) *100, 1))
-  sumTable$average[3] <- mean(mySum_df_leisure$travel_time_total_state)
-  sumTable$average[4] <- mean(mySum_df_rec$travel_time_total_state)
-  sumTable$average[5] <- as.integer(nrow(mySum_df_leisure))
+  sumTable$average[1] <- mean(mySum_df_indoor$fam_inc_mid, na.rm = T)
+  sumTable$average[2] <- as.numeric(round(sum(mySum_df_indoor$race == "white_noH") / nrow(mySum_df_indoor) *100, 1))
+  sumTable$average[3] <- mean(mySum_df_indoor$travel_time_total_state)
+  sumTable$average[4] <- mean(mySum_df_outdoor$travel_time_total_state)
+  sumTable$average[5] <- as.integer(nrow(mySum_df_indoor))
   
   sumTable
 }
 
 df_1 <-  myWorking %>%
-  filter(variable != "no_leisure") %>%
+  filter(activity != "no_leisure") %>%
   getKeyAvgs() %>%
   mutate(average_full_dataset = average) %>%
   select(average_full_dataset)
@@ -200,10 +202,10 @@ myDems <- vroom("clean_data/3.demographics_cleaned.csv")
 
 myData <- myData_og %>%
   group_by(date, caseid) %>%
-  mutate(total_rec_away = sum(time_recreating_away_temp, na.rm = T)) %>%
-  mutate(total_rec_home = sum(time_recreating_home_temp, na.rm = T)) %>%
-  mutate(total_leisure_home = sum(time_leisure_home_temp, na.rm = T)) %>%
-  mutate(total_leisure_away = sum(time_leisure_away_temp, na.rm = T)) %>%
+  mutate(total_outdoor_away = sum(time_recreating_away_temp, na.rm = T)) %>%
+  mutate(total_outdoor_home = sum(time_recreating_home_temp, na.rm = T)) %>%
+  mutate(total_indoor_home = sum(time_leisure_home_temp, na.rm = T)) %>%
+  mutate(total_indoor_away = sum(time_leisure_away_temp, na.rm = T)) %>%
   select(year, caseid, date, starts_with("total"), wt06, wt20) %>%
   distinct() %>%
   mutate(wt = if_else(year != 2020, wt06, wt20)) %>%
@@ -217,20 +219,20 @@ myData <- myData_og %>%
 
 myData_graphs <- myData %>%
   group_by(year) %>%
-  mutate(rec_away = sum(wt*total_rec_away)/sum(wt)) %>%
-  mutate(rec_home = sum(wt*total_rec_home)/sum(wt)) %>%
-  mutate(leisure_away = sum(wt*total_leisure_away)/sum(wt)) %>%
-  mutate(leisure_home = sum(wt*total_leisure_home)/sum(wt)) %>%
+  mutate(outdoor_away = sum(wt*total_outdoor_away)/sum(wt)) %>%
+  mutate(outdoor_home = sum(wt*total_outdoor_home)/sum(wt)) %>%
+  mutate(indoor_away = sum(wt*total_indoor_away)/sum(wt)) %>%
+  mutate(indoor_home = sum(wt*total_indoor_home)/sum(wt)) %>%
   select(year, 
-         rec_away, rec_home,
-         leisure_away, leisure_home
+         outdoor_away, outdoor_home,
+         indoor_away, indoor_home
          ) %>%
   distinct()
            
 myGraph_long <- myData_graphs %>%
   pivot_longer(
-    cols = c(rec_away,rec_home, leisure_away,  leisure_home), # Select the columns to pivot
-    names_to = "activity",       # Name of the new 'variable' column
+    cols = c(outdoor_away,outdoor_home, indoor_away,  indoor_home), # Select the columns to pivot
+    names_to = "activity",       # Name of the new 'activity' column
     values_to = "minutes"          # Name of the new 'value' column
   )
 
@@ -238,15 +240,15 @@ myGraph_long <- myData_graphs %>%
 # -----------------------------------------------------------------------------
 # Leisure graph
 # -----------------------------------------------------------------------------
-myGraph_leisure <- myGraph_long %>%
-  filter(str_detect(activity, "^leisure"))
+myGraph_indoor <- myGraph_long %>%
+  filter(str_detect(activity, "^indoor"))
 
 # Plotting the data using ggplot
-plot_leisure_1 <- ggplot(myGraph_leisure, aes(x = year, y = minutes, color = activity)) +
+plot_indoor_1 <- ggplot(myGraph_indoor, aes(x = year, y = minutes, color = activity)) +
   geom_line() +
   labs(x = "Year", y = "Minutes") +
   scale_color_discrete(name = "activity") +
-  ggtitle("Avg min on leisure per day") +
+  ggtitle("Avg min on indoor per day") +
   theme_bw()
 
 ```
@@ -256,15 +258,15 @@ plot_leisure_1 <- ggplot(myGraph_leisure, aes(x = year, y = minutes, color = act
 # -----------------------------------------------------------------------------
 # Recreations graph
 # -----------------------------------------------------------------------------
-myGraph_rec <- myGraph_long %>%
-  filter(str_detect(activity, "^rec"))
+myGraph_outdoor<- myGraph_long %>%
+  filter(str_detect(activity, "^outdoor"))
 
 # Plotting the data using ggplot
-plot_rec_1 <- ggplot(myGraph_rec, aes(x = year, y = minutes, color = activity)) +
+plot_outdoor_1 <- ggplot(myGraph_outdoor, aes(x = year, y = minutes, color = activity)) +
   geom_line() +
   labs(x = "Year", y = "Minutes") +
   scale_color_discrete(name = "activity") +
-  ggtitle("Avg min on recreation per day") +
+  ggtitle("Avg min on outdoor per day") +
   theme_bw()
 
 ```
@@ -278,28 +280,28 @@ plot_rec_1 <- ggplot(myGraph_rec, aes(x = year, y = minutes, color = activity)) 
 myData_seasons <- myData_og %>%
   mutate(year_q = year+(quarter-1)*.25) %>%
   group_by(date, caseid) %>%
-  mutate(total_rec_away = sum(time_recreating_away_temp, na.rm = T)) %>%
-  mutate(total_rec_home = sum(time_recreating_home_temp, na.rm = T)) %>%
-  mutate(total_leisure_home = sum(time_leisure_home_temp, na.rm = T)) %>%
-  mutate(total_leisure_away = sum(time_leisure_away_temp, na.rm = T)) %>%
+  mutate(total_outdoor_away = sum(time_recreating_away_temp, na.rm = T)) %>%
+  mutate(total_outdoor_home = sum(time_recreating_home_temp, na.rm = T)) %>%
+  mutate(total_indoor_home = sum(time_leisure_home_temp, na.rm = T)) %>%
+  mutate(total_indoor_away = sum(time_leisure_away_temp, na.rm = T)) %>%
   select(year, caseid, date, starts_with("total"), wt06, wt20, year_q) %>%
   distinct() %>%
   mutate(wt = if_else(year != 2020, wt06, wt20)) %>%
   select(-wt06, -wt20) %>%   
   group_by(year_q) %>%
-  mutate(rec_away = sum(wt*total_rec_away)/sum(wt)) %>%
-  mutate(rec_home = sum(wt*total_rec_home)/sum(wt)) %>%
-  mutate(leisure_away = sum(wt*total_leisure_away)/sum(wt)) %>%
-  mutate(leisure_home = sum(wt*total_leisure_home)/sum(wt)) %>%
+  mutate(outdoor_away = sum(wt*total_outdoor_away)/sum(wt)) %>%
+  mutate(outdoor_home = sum(wt*total_outdoor_home)/sum(wt)) %>%
+  mutate(indoor_away = sum(wt*total_indoor_away)/sum(wt)) %>%
+  mutate(indoor_home = sum(wt*total_indoor_home)/sum(wt)) %>%
   select(year, year_q,
-         rec_away, rec_home,
-         leisure_away, leisure_home
+         outdoor_away, outdoor_home,
+         indoor_away, indoor_home
          ) %>%
   distinct()
 
 mySeasons_long <- myData_seasons %>%
   pivot_longer(
-    cols = c(rec_away,rec_home, leisure_away,  leisure_home), # Select the columns to pivot
+    cols = c(outdoor_away,outdoor_home, indoor_away,  indoor_home), # Select the columns to pivot
     names_to = "activity",      
     values_to = "minutes"          
   )
@@ -307,15 +309,15 @@ mySeasons_long <- myData_seasons %>%
 # -----------------------------------------------------------------------------
 # Leisure graph
 # -----------------------------------------------------------------------------
-mySeasons_leisure <- mySeasons_long %>%
-  filter(str_detect(activity, "^leisure"))
+mySeasons_indoor <- mySeasons_long %>%
+  filter(str_detect(activity, "^indoor"))
 
 # Plotting the data using ggplot
-plot_leisure_2 <- ggplot(mySeasons_leisure, aes(x = year_q, y = minutes, color = activity)) +
+plot_indoor_2 <- ggplot(mySeasons_indoor, aes(x = year_q, y = minutes, color = activity)) +
   geom_line() +
   labs(x = "Year", y = "Minutes") +
   scale_color_discrete(name = "activity") +
-  ggtitle("Avg min on leisure per day") +
+  ggtitle("Avg min on indoor per day") +
   theme_bw()
 
 ```
@@ -326,25 +328,25 @@ plot_leisure_2 <- ggplot(mySeasons_leisure, aes(x = year_q, y = minutes, color =
 # -----------------------------------------------------------------------------
 # recreation graph
 # -----------------------------------------------------------------------------
-mySeasons_rec <- mySeasons_long %>%
-  filter(str_detect(activity, "^rec"))
+mySeasons_outdoor <- mySeasons_long %>%
+  filter(str_detect(activity, "^outdoor"))
 
 # Plotting the data using ggplot
-plot_rec_2 <-  ggplot(mySeasons_rec, aes(x = year_q, y = minutes, color = activity)) +
+plot_outdoor_2 <-  ggplot(mySeasons_outdoor, aes(x = year_q, y = minutes, color = activity)) +
   geom_line() +
   labs(x = "Year", y = "Minutes") +
   scale_color_discrete(name = "activity") +
-  ggtitle("Avg min on recreation per day") +
+  ggtitle("Avg min on outdoor per day") +
   theme_bw()
 
-grid.arrange(plot_leisure_1, plot_rec_1, plot_leisure_2, plot_rec_2, 
+grid.arrange(plot_indoor_1, plot_outdoor_1, plot_indoor_2, plot_outdoor_2, 
              nrow = 2, ncol = 2)
 
 ```
 
-Both leisure activities have held steady over the study period, with the exception of during covid. Recreation is also fairly steady with potentially a spike during COVID. 
+Both indoor activities have held steady over the study period, with the exception of during COVID Outdoor leisure is also fairly steady with a potential spike during COVID. 
 
-Cyclical trend on second row. Leisure away goes up in summer months and down in winter. Opposite is true for leisure at home. 
+Cyclical trend on second row. Indoor activities away goes up in summer months and down in winter. Opposite is true for indoor activities at home. 
 
 Way easier to see the cyclical trend with outdoor recreation.
 
@@ -379,20 +381,20 @@ myRace <- left_join(myData, myDems_race, by = "caseid")
 
 myRace_graphs <- myRace %>%
   group_by(year, race_1) %>%
-  mutate(rec_away = sum(wt*total_rec_away)/sum(wt)) %>%
-  mutate(rec_home = sum(wt*total_rec_home)/sum(wt)) %>%
-  mutate(leisure_away = sum(wt*total_leisure_away)/sum(wt)) %>%
-  mutate(leisure_home = sum(wt*total_leisure_home)/sum(wt)) %>%
+  mutate(outdoor_away = sum(wt*total_outdoor_away)/sum(wt)) %>%
+  mutate(outdoor_home = sum(wt*total_outdoor_home)/sum(wt)) %>%
+  mutate(indoor_away = sum(wt*total_indoor_away)/sum(wt)) %>%
+  mutate(indoor_home = sum(wt*total_indoor_home)/sum(wt)) %>%
   select(year, 
-         rec_away, rec_home,
-         leisure_away, leisure_home,
+         outdoor_away, outdoor_home,
+         indoor_away, indoor_home,
          race_1) %>%
   distinct()
            
 myRace_long <- myRace_graphs %>%
   pivot_longer(
-    cols = c(rec_away, rec_home, leisure_away,  leisure_home), # Select the columns to pivot
-    names_to = "activity",       # Name of the new 'variable' column
+    cols = c(outdoor_away, outdoor_home, indoor_away,  indoor_home), # Select the columns to pivot
+    names_to = "activity",       # Name of the new 'activity' column
     values_to = "minutes"          # Name of the new 'value' column
   )
 
@@ -400,11 +402,11 @@ myRace_long <- myRace_graphs %>%
 # -----------------------------------------------------------------------------
 # Leisure home graph
 # -----------------------------------------------------------------------------
-myRace_leisure_home <- myRace_long %>%
-  filter(str_detect(activity, "^leisure_home"))
+myRace_indoor_home <- myRace_long %>%
+  filter(str_detect(activity, "^indoor_home"))
 
 # Plotting the data using ggplot
-plot_race_1 <- ggplot(myRace_leisure_home, aes(x = year, y = minutes, color = race_1)) +
+plot_race_1 <- ggplot(myRace_indoor_home, aes(x = year, y = minutes, color = race_1)) +
   geom_line() +
   labs(x = "Year", y = "Minutes") +
   scale_color_discrete(name = "race") +
@@ -414,11 +416,11 @@ plot_race_1 <- ggplot(myRace_leisure_home, aes(x = year, y = minutes, color = ra
 # -----------------------------------------------------------------------------
 # Leisure away graph
 # -----------------------------------------------------------------------------
-myRace_leisure_away <- myRace_long %>%
-  filter(str_detect(activity, "^leisure_away"))
+myRace_indoor_away <- myRace_long %>%
+  filter(str_detect(activity, "^indoor_away"))
 
 # Plotting the data using ggplot
-plot_race_2 <-ggplot(myRace_leisure_away, aes(x = year, y = minutes, color = race_1)) +
+plot_race_2 <-ggplot(myRace_indoor_away, aes(x = year, y = minutes, color = race_1)) +
   geom_line() +
   labs(x = "Year", y = "Minutes") +
   scale_color_discrete(name = "race") +
@@ -434,12 +436,12 @@ plot_race_2 <-ggplot(myRace_leisure_away, aes(x = year, y = minutes, color = rac
 # -----------------------------------------------------------------------------
 # rec home graph
 # -----------------------------------------------------------------------------
-myRace_rec_home <- myRace_long %>%
-  filter(str_detect(activity, "^rec_home")) %>%
+myRace_outdoor_home <- myRace_long %>%
+  filter(str_detect(activity, "^outdoor_home")) %>%
   filter(!str_detect(race_1, "^other"))
 
 # Plotting the data using ggplot
-plot_race_3 <-ggplot(myRace_rec_home, aes(x = year, y = minutes, color = race_1)) +
+plot_race_3 <-ggplot(myRace_outdoor_home, aes(x = year, y = minutes, color = race_1)) +
   geom_line() +
   labs(x = "Year", y = "Minutes") +
   scale_color_discrete(name = "race") +
@@ -449,12 +451,12 @@ plot_race_3 <-ggplot(myRace_rec_home, aes(x = year, y = minutes, color = race_1)
 # -----------------------------------------------------------------------------
 # Leisure away graph
 # -----------------------------------------------------------------------------
-myRace_rec_away <- myRace_long %>%
-  filter(str_detect(activity, "^rec_away"))%>%
+myRace_outdoor_away <- myRace_long %>%
+  filter(str_detect(activity, "^outdoor_away"))%>%
   filter(!str_detect(race_1, "^other"))
 
 # Plotting the data using ggplot
-plot_race_4 <-ggplot(myRace_rec_away, aes(x = year, y = minutes, color = race_1)) +
+plot_race_4 <-ggplot(myRace_outdoor_away, aes(x = year, y = minutes, color = race_1)) +
   geom_line() +
   labs(x = "Year", y = "Minutes") +
   scale_color_discrete(name = "race") +
@@ -469,9 +471,6 @@ Black people participate in much more leisure at home.
 
 Black and Asian people do less recreation at home, and black people participate in much less recreation in general. 
 
-# next steps 
-
-- map of counties who I have data for (waiting for choropleth to be updated)
 
 
 
