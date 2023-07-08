@@ -25,6 +25,12 @@ In this write up, I use **total travel time grouped by state** to get the cost w
 
 # RUM model 
 
+Indirect utility:
+
+$$V_{itc} = \alpha_c + \beta x_{ic} + \gamma_c w_t $$
+Where $V$ is the indirect utility for person $i$ on choice occasion $t$ (day) for choice $c$. $\alpha$ is a choice specific constant. $\beta$ is a general coefficient for travel **time** $x$. $\gamma$ is a choice specific coefficient for weather on at for the choice occasion $w$. 
+
+
 ```{r}
 rm(list = ls())
 options(scipen = 999)
@@ -58,7 +64,7 @@ reg1.b <- mlogit(choice ~ travel_time_total_state | fam_inc_mid + tmmx, # formul
                alt.subset = c("indoor_home", "indoor_away", "outdoor_home", "outdoor_away")) 
 
 stargazer(reg1.a, reg1.b,
-          title = "Preferred model (entire year)",
+          title = "preferred model (entire year)",
           type = "text")
 
 ```
@@ -66,16 +72,51 @@ I'm currently going to work with the regression where income is not included bec
 
 # Marginal Effects 
 
-START HERE . 
+In multinomial logit models, the coefficients are NOT the marginal effects. 
 
+Marginal effect equations: 
+$$\frac{\partial P_{itl}}{\partial x_{itl}} = \beta P_{itl}(1 - P_{itl})$$
+
+$$\frac{\partial P_{itl}}{\partial w_{t}} = P_{itl}(\gamma_l - \sum_c P_{itc} \gamma_c)$$
+
+$$\frac{\partial P_{itl}}{\partial x_{itk}} = - \beta P_{itl}P_{itk}$$
+
+## Elasticities for temperature 
 ```{r}
+# -----------------------------------------------------------------------------
+# preferred reg specification (total travel time grouped by state)
+# -----------------------------------------------------------------------------
+elasts.temp.1a <- effects(reg1.a, covariate = "tmmx", type = "rr")
+
 
 ```
 
+A 1% increase in temperature leads: 
 
+  - `r round(elasts.temp.1a["indoor_home"],2)`% change in probability of choosing indoor leisure at home 
+  - `r round(elasts.temp.1a["indoor_away"],2)`% change in probability of choosing indoor leisure away from home 
+  - `r round(elasts.temp.1a["outdoor_away"],2)`% change in probability of choosing outdoor leisure away from home
+  - `r round(elasts.temp.1a["outdoor_home"],2)`% change in probability of choosing outdoor leisure at home 
+  
+Note: I find it reassuring that the outdoor leisure at home and away from home increase in a similar way. 
 
+## Elasticities for travel time
 
+```{r}
+elasts.travel.1a<- effects(reg1.a, covariate = "travel_time_total_state", type = "rr")
+elasts.travel.1a
+```
 
+A 1% increase in travel time to indoor away from home activities leads to: 
+
+  - `r round(elasts.travel.1a["indoor_away", "indoor_home"], 2)`% change in probability of choosing indoor home, outdoor away and outdoor home leisure (IIA property)
+  - `r round(elasts.travel.1a["indoor_away", "indoor_away"], 2)`% change in probability of choosing indoor away from leisure 
+  
+  
+A 1% increase in travel time to outdoor away from home leisure activities leads to: 
+
+  - `r round(elasts.travel.1a["outdoor_away", "indoor_home"], 3)`% change in probability of choosing indoor home, indoor away and outdoor home leisure (IIA property)
+  - `r round(elasts.travel.1a["outdoor_away", "outdoor_away"], 2)`% change in probability of choosing outdoor away from home leisure 
 
 
 
