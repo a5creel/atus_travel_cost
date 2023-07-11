@@ -23,7 +23,7 @@ myWorking_og <- vroom("clean_data/4.weather_tc_ALL.csv")
 myRUM_df <- myWorking_og %>%
   mutate(choice = if_else(number_activities > 0, 1, 0)) %>% # demand is 0/1 (extensive, not intensive)
   mutate(race = as.factor(race))  %>%
-  mutate(variable = as.factor(variable)) %>%
+  mutate(activity = as.factor(activity)) %>%
   
   # can't have NAs 
   filter(race != "other") %>% 
@@ -32,7 +32,7 @@ myRUM_df <- myWorking_og %>%
   filter(!is.na(tmmx)) %>% 
   
   # drop no leisure
-  filter(variable != "no_leisure") %>%
+  filter(activity != "no_leisure") %>%
   group_by(caseid) %>%
   mutate(temp = sum(choice)) %>%
   filter(temp != 0) %>%
@@ -46,12 +46,28 @@ myRUM_df <- myWorking_og %>%
 # CHANGING NAMES.
 # -----------------------------------------------------------------------------
 myRUM_df <- myRUM_df %>%
-  rename(activity = variable) %>%
   mutate(activity = if_else(activity == "rec_away", "outdoor_away", activity)) %>%
   mutate(activity = if_else(activity == "rec_home", "outdoor_home", activity)) %>%
   mutate(activity = if_else(activity == "leisure_away", "indoor_away", activity)) %>%
   mutate(activity = if_else(activity == "leisure_home", "indoor_home", activity)) 
 
+
+
+# -----------------------------------------------------------------------------
+# Adding seasons
+# -----------------------------------------------------------------------------
+getSeason <- function(input.date){
+  numeric.date <- 100*month(input.date)+day(input.date)
+  ## input Seasons upper limits in the form MMDD in the "break =" option:
+  cuts <- base::cut(numeric.date, breaks = c(0,319,0620,0921,1220,1231)) 
+  # rename the resulting groups (could've been done within cut(...levels=) if "Winter" wasn't double
+  levels(cuts) <- c("winter","spring","summer","fall","winter")
+  return(cuts)
+}
+
+
+myRUM_df <- myRUM_df %>% 
+  mutate(season = getSeason(date))
 
 # -----------------------------------------------------------------------------
 # turning into mlogit object

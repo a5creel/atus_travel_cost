@@ -28,7 +28,7 @@ In this write up, I use **total travel time grouped by state** to get the cost w
 Indirect utility:
 
 $$V_{itc} = \alpha_c + \beta x_{ic} + \gamma_c w_t $$
-Where $V$ is the indirect utility for person $i$ on choice occasion $t$ (day) for choice $c$. $\alpha$ is a choice specific constant. $\beta$ is a general coefficient for travel **time** $x$. $\gamma$ is a choice specific coefficient for weather on at for the choice occasion $w$. 
+Where $V$ is the indirect utility for person $i$ on choice occasion $t$ (day) for choice $c$. $\alpha$ is a choice specific constant. $\beta$ is a general coefficient for travel **time** $x$. $\gamma$ is a choice specific coefficient for weather on day $t$ at for the choice occasion $w$. 
 
 
 ```{r}
@@ -40,7 +40,8 @@ library(stringr)
 library(vroom)
 library(mlogit)
 library(stargazer)
-# library(lubridate)
+library(lubridate)
+library(ggplot2)
 
 # -----------------------------------------------------------------------------
 # read in R memory built in R_data_objs
@@ -55,13 +56,12 @@ load("05.RUM_data_objs.RData")
 reg1.a <- mlogit(choice ~ travel_time_total_state |  tmmx, # formula
                myRUM_idx, #mlogit data object
                reflevel = "indoor_home", #reference level 
-               alt.subset = c("indoor_home", "indoor_away", "outdoor_home", "outdoor_away")) # choices available (dropped no leisure)
+               ) # choices available (dropped no leisure)
 
 # income included 
 reg1.b <- mlogit(choice ~ travel_time_total_state | fam_inc_mid + tmmx, # formula
                myRUM_idx, 
-               reflevel = "indoor_home",  
-               alt.subset = c("indoor_home", "indoor_away", "outdoor_home", "outdoor_away")) 
+               reflevel = "indoor_home") 
 
 stargazer(reg1.a, reg1.b,
           title = "preferred model (entire year)",
@@ -119,7 +119,110 @@ A 1% increase in travel time to outdoor away from home leisure activities leads 
   - `r round(elasts.travel.1a["outdoor_away", "outdoor_away"], 2)`% change in probability of choosing outdoor away from home leisure 
 
 
+# By Season 
+
+```{r}
+# -----------------------------------------------------------------------------
+# Season regressions
+# -----------------------------------------------------------------------------
+
+mySeasonReg <- function(i){
+
+  myWorking_temp <- myRUM_idx %>%
+    filter(season == i) 
+  
+  reg <- mlogit(choice ~ travel_time_avg_state | tmmx, # formula
+                         myWorking_temp, #mlogit data object
+                         reflevel = "indoor_home") #reference level
+  
+}
+
+seasonRegs <- lapply(c("spring","summer","fall","winter"), 
+                      mySeasonReg)
+
+stargazer(seasonRegs, 
+          column.labels = c("spring","summer","fall","winter"),
+          title = "The effect of temperature changes given the season.",
+          type = "text")
 
 
 
+```
 
+## marginal effects 
+
+### Temperature 
+
+```{r}
+# -----------------------------------------------------------------------------
+# seasonal marginal effects
+# -----------------------------------------------------------------------------
+
+myEffects <- function(x){
+  effects(x, covariate = "tmmx", type = "rr")
+}
+
+season_temp_elasts <- lapply(seasonRegs, myEffects) %>%
+  bind_rows() %>%
+  round(2)
+
+season_temp_elasts <- bind_cols(season = c("spring","summer","fall","winter"), 
+                                season_temp_elasts)
+
+
+```
+
+
+# Have these summer outdoor_away elasticities trended through time? 
+
+
+```{r}
+# -----------------------------------------------------------------------------
+# getting summer elasticity through time
+# -----------------------------------------------------------------------------
+
+getSummerElasticity <- function(y) {
+  
+  myWorking_temp <- myRUM_idx %>%
+    filter(season == "summer") %>%
+    filter(year == y)
+  
+  reg <- mlogit(choice ~ travel_time_avg_state | tmmx, # formula
+                         myWorking_temp, #mlogit data object
+                         reflevel = "indoor_home") #reference level
+  
+  effects(reg, covariate = "tmmx", type = "rr")
+}
+
+#run regs and turn into table
+season_temp_elasts_time <- lapply(2003:2021, getSummerElasticity) %>% 
+  bind_rows()
+
+# add in year
+season_temp_elasts_time <- bind_cols(year = 2003:2021, 
+                                      season_temp_elasts_time)
+
+# -----------------------------------------------------------------------------
+# graph
+# -----------------------------------------------------------------------------
+
+seasons_elasts_long <- season_temp_elasts_time %>%
+  pivot_longer(
+    cols = c(outdoor_away,outdoor_home, indoor_away,  indoor_home), # Select the columns to pivot
+    names_to = "activity",      
+    values_to = "temp_elasticity"          
+  )
+
+
+# Plotting the data using ggplot
+ ggplot(seasons_elasts_long, aes(x = year, y = temp_elasticity, color = activity)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  labs(x = "Year", y = "Elasticity (temperature increase)") +
+  scale_color_discrete(name = "activity") +
+  ggtitle("Summer elasticities to temperature increases") +
+  theme_bw()
+
+
+```
+An increase summer temperature drives people home. This trend has only been exaggerated through time (potentially as the world has warmed through the last 20 years).
