@@ -118,6 +118,26 @@ A 1% increase in travel time to outdoor away from home leisure activities leads 
   - `r round(elasts.travel.1a["outdoor_away", "indoor_home"], 3)`% change in probability of choosing indoor home, indoor away and outdoor home leisure (IIA property)
   - `r round(elasts.travel.1a["outdoor_away", "outdoor_away"], 2)`% change in probability of choosing outdoor away from home leisure 
 
+## Travel cost calcs
+
+```{r}
+# -----------------------------------------------------------------------------
+# getting OC of 1 degree temp increase (in minutes)
+# https://cran.r-project.org/web/packages/mlogit/vignettes/c3.rum.html
+# -----------------------------------------------------------------------------
+
+getTravelCost_temp <- function(reg){
+  coef(reg)[grep("tmmx", names(coef(reg)))] /coef(reg)["travel_time_total_state"] 
+}
+
+getTravelCost_temp(reg1.a)
+
+
+```
+
+For the average day of the year, people would travel an additional ~9 minutes further to get to outdoor recreation that is 1 degree warming and 3 for indoor leisure. 
+
+
 
 # By Season 
 
@@ -131,7 +151,7 @@ mySeasonReg <- function(i){
   myWorking_temp <- myRUM_idx %>%
     filter(season == i) 
   
-  reg <- mlogit(choice ~ travel_time_avg_state | tmmx, # formula
+  reg <- mlogit(choice ~ travel_time_total_state | tmmx, # formula
                          myWorking_temp, #mlogit data object
                          reflevel = "indoor_home") #reference level
   
@@ -172,8 +192,34 @@ season_temp_elasts <- bind_cols(season = c("spring","summer","fall","winter"),
 
 ```
 
+## Travel time cost by season
 
-# Have these summer outdoor_away elasticities trended through time? 
+```{r}
+# -----------------------------------------------------------------------------
+# getting OC of 1 degree temp increase (in minutes) by season
+# https://cran.r-project.org/web/packages/mlogit/vignettes/c3.rum.html
+# -----------------------------------------------------------------------------
+
+lapply(seasonRegs, getTravelCost_temp) %>%
+  bind_rows() %>%
+  bind_cols(season = c("spring","summer","fall","winter"),) %>%
+  select(season, starts_with("tmmx"))
+
+
+```
+
+In the summer, the people lose an avg of 8 minutes of welfare for a temperature increase for indoor leisure activities away from home and 13 min for outdoor for a 1 degree temperature increase. 
+
+In other seasons, there are welfare gains for temp increases but they're smaller. 
+
+
+## What are the average number of trips taken per season? 
+
+NEXT STEP IS RIGHT HERE !!!! 
+
+
+
+# Have these summer outdoor away elasticities trended through time? 
 
 
 ```{r}
@@ -187,7 +233,7 @@ getSummerElasticity <- function(y) {
     filter(season == "summer") %>%
     filter(year == y)
   
-  reg <- mlogit(choice ~ travel_time_avg_state | tmmx, # formula
+  reg <- mlogit(choice ~ travel_time_total_state | tmmx, # formula
                          myWorking_temp, #mlogit data object
                          reflevel = "indoor_home") #reference level
   
@@ -220,9 +266,24 @@ seasons_elasts_long <- season_temp_elasts_time %>%
   geom_smooth(method = "lm", se = F) +
   labs(x = "Year", y = "Elasticity (temperature increase)") +
   scale_color_discrete(name = "activity") +
-  ggtitle("Summer elasticities to temperature increases") +
+  ggtitle("Summer elasticities (resp. to temp increase)") +
   theme_bw()
 
 
 ```
 An increase summer temperature drives people home. This trend has only been exaggerated through time (potentially as the world has warmed through the last 20 years).
+
+# Travel cost calcs 
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
