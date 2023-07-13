@@ -42,6 +42,8 @@ library(mlogit)
 library(stargazer)
 library(lubridate)
 library(ggplot2)
+library(gridExtra)
+
 
 # -----------------------------------------------------------------------------
 # read in R memory built in R_data_objs
@@ -80,6 +82,9 @@ $$\frac{\partial P_{itl}}{\partial x_{itl}} = \beta P_{itl}(1 - P_{itl})$$
 $$\frac{\partial P_{itl}}{\partial w_{t}} = P_{itl}(\gamma_l - \sum_c P_{itc} \gamma_c)$$
 
 $$\frac{\partial P_{itl}}{\partial x_{itk}} = - \beta P_{itl}P_{itk}$$
+I calculate the marginal effects as a relative change to a relative change (baseline is the average) so that marginal effects are an elasticity. 
+
+
 
 ## Elasticities for temperature 
 ```{r}
@@ -88,7 +93,7 @@ $$\frac{\partial P_{itl}}{\partial x_{itk}} = - \beta P_{itl}P_{itk}$$
 # -----------------------------------------------------------------------------
 elasts.temp.1a <- effects(reg1.a, covariate = "tmmx", type = "rr")
 
-
+elasts.temp.1a
 ```
 
 A 1% increase in temperature leads: 
@@ -104,7 +109,7 @@ Note: I find it reassuring that the outdoor leisure at home and away from home i
 
 ```{r}
 elasts.travel.1a<- effects(reg1.a, covariate = "travel_time_total_state", type = "rr")
-elasts.travel.1a
+round(elasts.travel.1a, 2)
 ```
 
 A 1% increase in travel time to indoor away from home activities leads to: 
@@ -135,7 +140,7 @@ getTravelCost_temp(reg1.a)
 
 ```
 
-For the average day of the year, people would travel an additional ~9 minutes further to get to outdoor recreation that is 1 degree warming and 3 for indoor leisure. 
+For the average day of the year, people would travel an additional ~9 minutes further to get to outdoor recreation that is 1 degree warming and 3 minutes for indoor leisure. 
 
 
 
@@ -169,9 +174,9 @@ stargazer(seasonRegs,
 
 ```
 
-## marginal effects 
+# Elasticities (marginal effects)
 
-### Temperature 
+## Temperature 
 
 ```{r}
 # -----------------------------------------------------------------------------
@@ -188,7 +193,7 @@ season_temp_elasts <- lapply(seasonRegs, myEffects) %>%
 
 season_temp_elasts <- bind_cols(season = c("spring","summer","fall","winter"), 
                                 season_temp_elasts)
-
+season_temp_elasts
 
 ```
 
@@ -208,29 +213,88 @@ lapply(seasonRegs, getTravelCost_temp) %>%
 
 ```
 
-In the summer, the people lose an avg of 8 minutes of welfare for a temperature increase for indoor leisure activities away from home and 13 min for outdoor for a 1 degree temperature increase. 
+In the summer, people lose an avg of 8 - 13 minutes of welfare for a temperature increase from away from home  leisure activities.  
 
 In other seasons, there are welfare gains for temp increases but they're smaller. 
 
 
 ## What are the average number of trips taken per season? 
 
-NEXT STEP IS RIGHT HERE !!!! 
+```{r}
+# -----------------------------------------------------------------------------
+# get average number of total trips per season
+# -----------------------------------------------------------------------------
+
+# need replication weights 
+myWts <- vroom("clean_data/2.demographics_ALL.csv") %>%
+  mutate(wt = if_else(year == 2020, wt20, wt06)) %>%
+  select(caseid, year, wt)
+
+avgTripsSeason <- myRUM_df %>%
+  left_join(myWts, by = c("year", "caseid")) %>% 
+  group_by(year, activity, season) %>%
+  summarize(total_days = sum(choice*wt)) %>%
+  group_by(activity, season) %>%
+  mutate(avg_trips = mean(total_days)) %>% 
+  select(activity, season, avg_trips) %>% 
+  distinct()
+
+# Define the order of the activities for proper ordering on the x-axis
+activity_order <- c("indoor_home", "outdoor_home", "indoor_away", "outdoor_away")
+
+# -----------------------------------------------------------------------------
+# Indoor activities 
+# -----------------------------------------------------------------------------
+
+avgTripsSeason_indoor <- avgTripsSeason %>% 
+  filter(str_detect(activity, "^indoor"))
+
+# Create the bar chart
+plot_indoor <- ggplot(avgTripsSeason_indoor, aes(x = season, y = avg_trips, fill = activity)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("#E69F00", "#56B4E9")) +
+  labs(x = "Season", y = "Average Number of total trips taken") +
+  scale_x_discrete(limits = c("spring", "summer", "fall", "winter")) +
+  theme_bw() +
+  theme(legend.position = "top") +
+  guides(fill = guide_legend(title = "Activity"))
 
 
+# -----------------------------------------------------------------------------
+# outdoor activities 
+# -----------------------------------------------------------------------------
+avgTripsSeason_outdoor <- avgTripsSeason %>% 
+  filter(str_detect(activity, "^outdoor"))
 
-# Have these summer outdoor away elasticities trended through time? 
+# Create the bar chart
+plot_outdoor <- ggplot(avgTripsSeason_outdoor, aes(x = season, y = avg_trips, fill = activity)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("#F0E442", "#009E73")) +
+  labs(x = "Season", y = "Average Number of total trips taken") +
+  scale_x_discrete(limits = c("spring", "summer", "fall", "winter")) +
+  theme_bw() +
+  theme(legend.position = "top") +
+  guides(fill = guide_legend(title = "Activity"))
+
+
+grid.arrange(plot_indoor, plot_outdoor,
+             nrow = 1, ncol = 2)
+
+```
+Outdoor activities see a spike in the spring and summer, but indoor activities are relatively more steady through the year. 
+
+# Have the elasticities trended through time? 
 
 
 ```{r}
 # -----------------------------------------------------------------------------
-# getting summer elasticity through time
+# functions
 # -----------------------------------------------------------------------------
-
-getSummerElasticity <- function(y) {
+getSeasonElasticity <- function(y, s) {
   
   myWorking_temp <- myRUM_idx %>%
-    filter(season == "summer") %>%
+    # filter(season == "summer") %>%
+    filter(season == s) %>% 
     filter(year == y)
   
   reg <- mlogit(choice ~ travel_time_total_state | tmmx, # formula
@@ -240,44 +304,58 @@ getSummerElasticity <- function(y) {
   effects(reg, covariate = "tmmx", type = "rr")
 }
 
-#run regs and turn into table
-season_temp_elasts_time <- lapply(2003:2021, getSummerElasticity) %>% 
-  bind_rows()
-
-# add in year
-season_temp_elasts_time <- bind_cols(year = 2003:2021, 
-                                      season_temp_elasts_time)
 
 # -----------------------------------------------------------------------------
-# graph
+# getting graphs of seasonal elasticity through time
 # -----------------------------------------------------------------------------
 
-seasons_elasts_long <- season_temp_elasts_time %>%
-  pivot_longer(
-    cols = c(outdoor_away,outdoor_home, indoor_away,  indoor_home), # Select the columns to pivot
-    names_to = "activity",      
-    values_to = "temp_elasticity"          
-  )
+getSeasonTempGraph <- function(season){
+  
+  #run regs and turn into table
+  season_temp_elasts_time <- lapply(2003:2021, getSeasonElasticity, s = season) %>% 
+    bind_rows()
+  
+  # add in year
+  season_temp_elasts_time <- bind_cols(year = 2003:2021, 
+                                        season_temp_elasts_time)
+  
+  
+  # pivot long for graph
+  seasons_elasts_long <- season_temp_elasts_time %>%
+    pivot_longer(
+      cols = c(outdoor_away,outdoor_home, indoor_away,  indoor_home), # Select the columns to pivot
+      names_to = "activity",      
+      values_to = "temp_elasticity"          
+    )
+  
+  # graph
+   ggplot(seasons_elasts_long, aes(x = year, y = temp_elasticity, color = activity)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = F) +
+    labs(x = "Year", y = "Elasticity") +
+    scale_color_discrete(name = "activity") +
+    geom_hline(yintercept = 0) +
+    ggtitle(season) +
+    theme_bw()+ 
+    theme(legend.position = "right") +
+    guides(fill = guide_legend(title = "Activity"))
+}
 
 
-# Plotting the data using ggplot
- ggplot(seasons_elasts_long, aes(x = year, y = temp_elasticity, color = activity)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = F) +
-  labs(x = "Year", y = "Elasticity (temperature increase)") +
-  scale_color_discrete(name = "activity") +
-  ggtitle("Summer elasticities (resp. to temp increase)") +
-  theme_bw()
+temp_elast_graphs <- lapply(c("spring","summer","fall","winter"), getSeasonTempGraph)
+
+grid.arrange(temp_elast_graphs[[1]], temp_elast_graphs[[2]], 
+             temp_elast_graphs[[3]], temp_elast_graphs[[4]],
+             nrow = 2, ncol = 2,
+             top = "Responce to  1% temp increase")
+
+
+
 
 
 ```
 An increase summer temperature drives people home. This trend has only been exaggerated through time (potentially as the world has warmed through the last 20 years).
 
-# Travel cost calcs 
-
-```{r}
-
-```
 
 
 
