@@ -63,6 +63,21 @@ myInc <- myInc_codes_og %>%
   mutate(fam_inc_mid = 1/2*(fam_inc_low+ fam_inc_high)) %>% 
   select(-bin)
 
+# # -----------------------------------------------------------------------------
+# # Get MSA to county 
+# # -----------------------------------------------------------------------------
+# myMSA <- vroom("raw_data/msa_counties.csv") %>%
+#   rename(county_1 =`County Code`) %>% 
+#   rename(metarea = `MSA Code`) %>% 
+#   mutate(metarea = as.numeric(gsub("^C", "", metarea))) %>% 
+#   select(county_1, metarea)
+#   
+# 
+# 
+# 
+# test <- left_join(myTC, myMSA, by = "metarea")
+
+
 # -----------------------------------------------------------------------------
 # Merge
 # -----------------------------------------------------------------------------

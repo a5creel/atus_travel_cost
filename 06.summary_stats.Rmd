@@ -188,6 +188,9 @@ myMap %>%
 
 ```
 
+There isn't a way to fix this, half of people dont say the MSA or the county they're living in so we only know what state. 
+
+
 # Avg min doing activity 
 
 ```{r}

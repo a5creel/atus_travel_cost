@@ -15,6 +15,9 @@ library(devtools)
 ###############################################################################
 
 cleanYears <-function(file_names){
+  
+  #test 
+  # file_names <- "2013-2021"
 
   # -----------------------------------------------------------------------------
   # Load data downloaded from IPUMS (code provided by IPUMS) and activity codes
@@ -46,7 +49,8 @@ cleanYears <-function(file_names){
       select(year, statefip, county, caseid, 
              age, sex, race, hispan, marst, citizen, educyrs, 
              earnweek, hourwage, famincome, 
-             wt06, wt20) %>%
+             wt06, wt20, 
+             metarea) %>%
       mutate(caseid = format(caseid, scientific = FALSE)) %>%
       distinct()
   } else{
@@ -54,7 +58,8 @@ cleanYears <-function(file_names){
       select(year, statefip, county, caseid, 
              age, sex, race, hispan, marst, citizen, educyrs, 
              earnweek, hourwage, famincome, 
-             wt06) %>%
+             wt06, 
+             metarea) %>%
       mutate(caseid = format(caseid, scientific = FALSE)) %>%
       distinct()
   }
@@ -258,5 +263,5 @@ names(myData) <- tolower(names(myData))
 
 vroom_write(myData, "clean_data/2.ATUS_wide_og.csv")
 
-
+head(myData)
 

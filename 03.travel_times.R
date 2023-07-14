@@ -62,7 +62,7 @@ myDem_race <- myDems_og %>%
   mutate(my_race = if_else(is.na(my_race), "other", my_race)) %>%
   select(-race) %>%
   rename(race = my_race) %>%
-  select(caseid, year, statefip, race, county, hourwage, earnweek, famincome)
+  select(caseid, year, statefip, race, county, hourwage, earnweek, famincome, metarea)
   
 vroom_write(myDem_race, "clean_data/3.demographics_cleaned.csv")
 
