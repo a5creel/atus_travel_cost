@@ -62,6 +62,8 @@ stargazer(reg1,
 
 We can identify consumer surplus up to an unidentified constant, therefore the number on its own is not relevant. However changes in consumer surplus are identified. 
 
+### no travel time to outdoor leisure >10 min 
+
 ```{r}
 # -----------------------------------------------------------------------------
 # calculate inclusive value for baseline
@@ -81,11 +83,9 @@ myRUM_10min <- myRUM_df %>%
 # calc indirect utility for everyone under new scenario 
 iv_10min <- logsum(reg1, data = myRUM_10min)
 
-# -----------------------------------------------------------------------------
 # calculate change in welfare
-# -----------------------------------------------------------------------------
-surplus <- - (iv_10min - iv_baseline) / coef(reg1)["travel_time_total_state"] 
-summary(surplus)
+surplus_10min <- - (iv_10min - iv_baseline) / coef(reg1)["travel_time_total_state"] 
+summary(surplus_10min)
 
 
 
@@ -94,9 +94,53 @@ summary(surplus)
 
 Consumer's surplus variation range from 0 to 19 minutes, with a median value of about 1 minute. This is per choice occasion (day). 
 
+ATTN: does this account for how many people would start taking a trip who hadn't been earlier? 
+
+
+### Travel time for ourdoor rec goes to infinity 
+
+```{r}
+
+# -----------------------------------------------------------------------------
+# create a data set where travel time isn't ever more than 10 minutes for outdoor leisure
+# -----------------------------------------------------------------------------
+
+myRUM_inf <- myRUM_df %>%
+  select(choice, travel_time_total_state, tmmx, activity) %>% 
+  mutate(travel_time_total_state = if_else(activity == "outdoor_away" , 10^4, travel_time_total_state)) %>% 
+  dfidx(idx = list(NA, "activity")) 
+
+# calc indirect utility for everyone under new scenario 
+iv_inf <- logsum(reg1, data = myRUM_inf)
+
+# calculate change in welfare
+surplus_inf <- - (iv_inf - iv_baseline) / coef(reg1)["travel_time_total_state"] 
+summary(surplus_inf)
+
+
+```
+
+
+If the travel cost of visiting a park went to 10,000 minutes, the average person would experience 16 minutes of welfare loss per choice occasion. (Tried with 40K and got same result.)
+
+This is per choice occasion. So this would be `r 16*365/60` hours per person per year.
+
+## Seperate by race?
+
+```{r}
+
+
+```
 
 
 
+# get a year trend?
+
+```{r}
+reg1$freq
+
+
+```
 
 
 

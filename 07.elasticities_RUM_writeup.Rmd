@@ -312,7 +312,11 @@ grid.arrange(plot_indoor, plot_outdoor,
              nrow = 1, ncol = 2)
 
 ```
-Outdoor activities see a spike in the spring and summer, but indoor activities are relatively more steady through the year. 
+Outdoor activities see a spike in the spring and summer, but indoor activities are relatively more steady through the year.
+
+
+This is only our sample, not the broader sample (bc a lot of data dropped with temperature stuff).
+
 
 ## Have the elasticities trended through time? 
 
