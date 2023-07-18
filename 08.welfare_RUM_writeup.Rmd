@@ -1,0 +1,103 @@
+---
+title: "RUM Model: welfare calcs"
+author: "Andie Creel"
+date: "2023-07-06"
+output: 
+  pdf_document:
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message  = FALSE)
+```
+
+# Questions of interest: 
+
+As summers heat up, how can individuals adapt the time of year they recreate outside? How can institutions like schools and work change so that people can adapt their recreation schedule. 
+  
+# RUM model (Annual)
+
+Indirect utility:
+
+$$V_{itc} = \alpha_c + \beta x_{ic} + \gamma_c w_t $$
+Where $V$ is the indirect utility for person $i$ on choice occasion $t$ (day) for choice $c$. $\alpha$ is a choice specific constant. $\beta$ is a general coefficient for travel **time** $x$. $\gamma$ is a choice specific coefficient for weather on day $t$ at for the choice occasion $w$. 
+
+
+```{r}
+rm(list = ls())
+options(scipen = 999)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(vroom)
+library(mlogit)
+library(stargazer)
+library(lubridate)
+library(ggplot2)
+library(gridExtra)
+
+# -----------------------------------------------------------------------------
+# read in R memory built in R_data_objs
+# -----------------------------------------------------------------------------
+load("05.RUM_data_objs.RData")
+
+# -----------------------------------------------------------------------------
+# preferred reg specification (total travel time grouped by state)
+# -----------------------------------------------------------------------------
+
+# income not included
+reg1 <- mlogit(choice ~ travel_time_total_state |  tmmx, 
+               myRUM_idx, 
+               reflevel = "indoor_home") 
+
+stargazer(reg1,
+          title = "preferred model (entire year)",
+          type = "text")
+
+```
+ The numeraire is minutes. 
+
+## Welfare calcs
+
+We can identify consumer surplus up to an unidentified constant, therefore the number on its own is not relevant. However changes in consumer surplus are identified. 
+
+```{r}
+# -----------------------------------------------------------------------------
+# calculate inclusive value for baseline
+# -----------------------------------------------------------------------------
+iv_baseline <- logsum(reg1)
+
+# -----------------------------------------------------------------------------
+# create a data set where travel time isn't ever more than 10 minutes for outdoor leisure
+# -----------------------------------------------------------------------------
+
+myRUM_10min <- myRUM_df %>%
+  select(choice, travel_time_total_state, tmmx, activity) %>% 
+  mutate(travel_time_total_state = if_else(activity == "outdoor_away" & travel_time_total_state > 10, 
+                                           10, travel_time_total_state)) %>% 
+  dfidx(idx = list(NA, "activity")) 
+
+# calc indirect utility for everyone under new scenario 
+iv_10min <- logsum(reg1, data = myRUM_10min)
+
+# -----------------------------------------------------------------------------
+# calculate change in welfare
+# -----------------------------------------------------------------------------
+surplus <- - (iv_10min - iv_baseline) / coef(reg1)["travel_time_total_state"] 
+summary(surplus)
+
+
+
+```
+
+
+Consumer's surplus variation range from 0 to 19 minutes, with a median value of about 1 minute. This is per choice occasion (day). 
+
+
+
+
+
+
+
+

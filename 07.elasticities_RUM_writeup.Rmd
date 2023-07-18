@@ -1,8 +1,10 @@
 ---
-title: "Second Write Up on RUM model"
+title: "RUM Model: elasticities and temperature affects"
 author: "Andie Creel"
 date: "2023-07-06"
-output: pdf_document
+output: 
+  pdf_document:
+    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
@@ -12,18 +14,16 @@ knitr::opts_chunk$set(message  = FALSE)
 
 # Questions of interest: 
 
-  - Substitution between indoor and outdoor leisure under different climate scenarios 
-  - How does that substitution change during seasons
-  - How does it change for people living in an urban heat island 
+As summers heat up, how can individuals adapt the time of year they recreate outside? How can institutions like schools and work change so that people can adapt their recreation schedule. 
   
-Note: all results are on the extensive margin (did you take a trip that week or not). 
+Note: all results are on the extensive margin (did you take a trip that day or not). 
 
 From the 05.write_up.pdf I found that constructing the travel cost for no trips is fairly robust, regardless of if I'm using total travel time or average travel time per trip, as well as if I'm grouping by race or state. 
 
 In this write up, I use **total travel time grouped by state** to get the cost when people don't take a trip. 
 
 
-# RUM model 
+# RUM model (Annual)
 
 Indirect utility:
 
@@ -72,7 +72,7 @@ stargazer(reg1.a, reg1.b,
 ```
 I'm currently going to work with the regression where income is not included because the estimates are robust. The numeraire is currently minutes. 
 
-# Marginal Effects 
+## Marginal Effects 
 
 In multinomial logit models, the coefficients are NOT the marginal effects. 
 
@@ -85,8 +85,7 @@ $$\frac{\partial P_{itl}}{\partial x_{itk}} = - \beta P_{itl}P_{itk}$$
 I calculate the marginal effects as a relative change to a relative change (baseline is the average) so that marginal effects are an elasticity. 
 
 
-
-## Elasticities for temperature 
+### Elasticities for temperature 
 ```{r}
 # -----------------------------------------------------------------------------
 # preferred reg specification (total travel time grouped by state)
@@ -105,7 +104,7 @@ A 1% increase in temperature leads:
   
 Note: I find it reassuring that the outdoor leisure at home and away from home increase in a similar way. 
 
-## Elasticities for travel time
+### Elasticities for travel time
 
 ```{r}
 elasts.travel.1a<- effects(reg1.a, covariate = "travel_time_total_state", type = "rr")
@@ -174,20 +173,20 @@ stargazer(seasonRegs,
 
 ```
 
-# Elasticities (marginal effects)
+## Elasticities (marginal effects)
 
-## Temperature 
+### Temperature 
 
 ```{r}
 # -----------------------------------------------------------------------------
 # seasonal marginal effects
 # -----------------------------------------------------------------------------
 
-myEffects <- function(x){
+myEffects_temp <- function(x){
   effects(x, covariate = "tmmx", type = "rr")
 }
 
-season_temp_elasts <- lapply(seasonRegs, myEffects) %>%
+season_temp_elasts <- lapply(seasonRegs, myEffects_temp) %>%
   bind_rows() %>%
   round(2)
 
@@ -196,6 +195,36 @@ season_temp_elasts <- bind_cols(season = c("spring","summer","fall","winter"),
 season_temp_elasts
 
 ```
+
+### Travel Time 
+
+```{r}
+
+# -----------------------------------------------------------------------------
+# seasonal marginal effects
+# -----------------------------------------------------------------------------
+
+myEffects_time <- function(x){
+  effects(x, covariate = "travel_time_total_state", type = "rr")
+}
+
+season_time_elasts_list <- lapply(seasonRegs, myEffects_time) 
+
+season_time_elasts <- bind_cols(season = c("spring","summer","fall","winter"), 
+                                indoor_away = c(season_time_elasts_list[[1]]["indoor_away", "indoor_away"], 
+                                                season_time_elasts_list[[2]]["indoor_away", "indoor_away"], 
+                                                season_time_elasts_list[[3]]["indoor_away", "indoor_away"], 
+                                                season_time_elasts_list[[4]]["indoor_away", "indoor_away"]),
+                                outdoor_away = c(season_time_elasts_list[[1]]["outdoor_away", "outdoor_away"], 
+                                                season_time_elasts_list[[2]]["outdoor_away", "outdoor_away"], 
+                                                season_time_elasts_list[[3]]["outdoor_away", "outdoor_away"], 
+                                                season_time_elasts_list[[4]]["outdoor_away", "outdoor_away"]))
+season_time_elasts
+
+```
+
+Demand for away from home activites is the least elastic in the summer and the most elastic in the winter (for a 1% increase in travel time). However, all of these are less than 1% in magnitude. Responces in demand to changes in travel time if far more inelastic than temperature changes.
+
 
 ## Travel time cost by season
 
@@ -213,12 +242,13 @@ lapply(seasonRegs, getTravelCost_temp) %>%
 
 ```
 
-In the summer, people lose an avg of 8 - 13 minutes of welfare for a temperature increase from away from home  leisure activities.  
+In the summer, people lose an avg of 8 - 13 minutes of welfare for a temperature increase from away from home activities.  
 
 In other seasons, there are welfare gains for temp increases but they're smaller. 
 
 
 ## What are the average number of trips taken per season? 
+This is on the *intensive* margin again, so counts all the activities participated in a day. 
 
 ```{r}
 # -----------------------------------------------------------------------------
@@ -233,11 +263,12 @@ myWts <- vroom("clean_data/2.demographics_ALL.csv") %>%
 avgTripsSeason <- myRUM_df %>%
   left_join(myWts, by = c("year", "caseid")) %>% 
   group_by(year, activity, season) %>%
-  summarize(total_days = sum(choice*wt)) %>%
+  summarize(total_days = sum(number_activities*wt)) %>% #intesive margin
   group_by(activity, season) %>%
-  mutate(avg_trips = mean(total_days)) %>% 
+  mutate(avg_trips = mean(total_days)/1000000) %>% 
   select(activity, season, avg_trips) %>% 
   distinct()
+  
 
 # Define the order of the activities for proper ordering on the x-axis
 activity_order <- c("indoor_home", "outdoor_home", "indoor_away", "outdoor_away")
@@ -253,7 +284,7 @@ avgTripsSeason_indoor <- avgTripsSeason %>%
 plot_indoor <- ggplot(avgTripsSeason_indoor, aes(x = season, y = avg_trips, fill = activity)) +
   geom_bar(stat = "identity", position = "dodge") +
   scale_fill_manual(values = c("#E69F00", "#56B4E9")) +
-  labs(x = "Season", y = "Average Number of total trips taken") +
+  labs(x = "Season", y = "Average trips (millions)") +
   scale_x_discrete(limits = c("spring", "summer", "fall", "winter")) +
   theme_bw() +
   theme(legend.position = "top") +
@@ -270,7 +301,7 @@ avgTripsSeason_outdoor <- avgTripsSeason %>%
 plot_outdoor <- ggplot(avgTripsSeason_outdoor, aes(x = season, y = avg_trips, fill = activity)) +
   geom_bar(stat = "identity", position = "dodge") +
   scale_fill_manual(values = c("#F0E442", "#009E73")) +
-  labs(x = "Season", y = "Average Number of total trips taken") +
+  labs(x = "Season", y = "Average trips (millions)") +
   scale_x_discrete(limits = c("spring", "summer", "fall", "winter")) +
   theme_bw() +
   theme(legend.position = "top") +
@@ -283,8 +314,7 @@ grid.arrange(plot_indoor, plot_outdoor,
 ```
 Outdoor activities see a spike in the spring and summer, but indoor activities are relatively more steady through the year. 
 
-# Have the elasticities trended through time? 
-
+## Have the elasticities trended through time? 
 
 ```{r}
 # -----------------------------------------------------------------------------
