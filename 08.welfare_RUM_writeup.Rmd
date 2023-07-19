@@ -36,6 +36,7 @@ library(stargazer)
 library(lubridate)
 library(ggplot2)
 library(gridExtra)
+library(parallel)
 
 # -----------------------------------------------------------------------------
 # read in R memory built in R_data_objs
@@ -46,21 +47,35 @@ load("05.RUM_data_objs.RData")
 # preferred reg specification (total travel time grouped by state)
 # -----------------------------------------------------------------------------
 
-# income not included
-reg1 <- mlogit(choice ~ travel_time_total_state |  tmmx, 
+# income not included and temp
+reg1 <- mlogit(choice ~ travel_time_total_state, 
                myRUM_idx, 
                reflevel = "indoor_home") 
 
-stargazer(reg1,
+# temp included 
+reg2 <- mlogit(choice ~ travel_time_total_state | tmmx, 
+               myRUM_idx, 
+               reflevel = "indoor_home")
+
+stargazer(reg1, reg2, 
           title = "preferred model (entire year)",
           type = "text")
 
 ```
  The numeraire is minutes. 
+ 
+ Currently dropping so much data for where I dont have temp. 
 
 ## Welfare calcs
 
 We can identify consumer surplus up to an unidentified constant, therefore the number on its own is not relevant. However changes in consumer surplus are identified. 
+
+I can use a log-sum to calculate the expected utility for each choice occasion, t,  
+
+$$E(U_t) = \ln \sum_{c = 1}^C e^{V_{tc}} + C.$$
+
+If I know that marginal utility of the numeraire, $\beta$, then I can calculate the expected consumer surplus, $E(U)/\beta$. 
+
 
 ### no travel time to outdoor leisure >10 min 
 
@@ -121,9 +136,83 @@ summary(surplus_inf)
 ```
 
 
-If the travel cost of visiting a park went to 10,000 minutes, the average person would experience 16 minutes of welfare loss per choice occasion. (Tried with 40K and got same result.)
+If the travel cost of visiting a park went to 10,000 minutes, the average person would experience 16 minutes of welfare loss per choice occasion. I tried with 40K and got same result. This is mean to mirror price going to infinity, which is sometimes used to calcute the welfare loss of parks being taken away. 
 
-This is per choice occasion. So this would be `r 16*365/60` hours per person per year.
+This is per choice occasion. So this would be 97 hours per person per year (16*365/60).
+
+Median weekly income in Q2 2023 is \$1,095, or \$27 per hour assuming a 40 hour work week. This would be a welfare loss of \$2628 per year.
+
+
+# Trend through years
+
+```{r}
+
+getAnnualCS <- function(y){
+  
+  # --------------------------------------------
+  #  calc baseline for that year 
+  # --------------------------------------------
+  
+  # get annual df by filtering on year
+  myRUM_og <- myRUM_df %>%
+    select(choice, travel_time_total_state, tmmx, activity, year) %>% 
+    filter(year == y) %>% 
+    dfidx(idx = list(NA, "activity"))
+    
+  #rerun regression 
+  reg_og <- mlogit(choice ~ travel_time_total_state , 
+               myRUM_og, 
+               reflevel = "indoor_home") 
+
+  # calc indirect utility for everyone under new scenario 
+  iv_og <- logsum(reg_og)
+  
+  # --------------------------------------------
+  #  calc if price of parks went in 10^4 which mimics infinity
+  # --------------------------------------------
+  myRUM_inf <- myRUM_df %>%
+    select(choice, travel_time_total_state, tmmx, activity, year) %>% 
+    mutate(travel_time_total_state = if_else(activity == "outdoor_away" , 10^4, travel_time_total_state)) %>%
+    filter(year == y) %>% 
+    dfidx(idx = list(NA, "activity"))
+  
+  # calc indirect utility for everyone under new scenario 
+  iv_inf <- logsum(reg_og, data = myRUM_inf)
+
+  
+  # calculate change in welfare
+  surplus <- - (iv_inf - iv_og) / coef(reg_og)["travel_time_total_state"] 
+  
+  return(summary(surplus))
+  # return(coef(reg_og)["travel_time_total_state"])
+}
+
+surplus_studyperiod <- mclapply(2003:2021, getAnnualCS) %>%
+  bind_rows() %>%
+  bind_cols(year = 2003:2021) %>%
+  select(year, everything())
+
+mean(surplus_studyperiod$Mean) # checks out as 16 (to be expected)
+
+# Plotting trend
+ggplot(surplus_studyperiod, aes(x = year, y = -1*Mean)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = T) + 
+  labs(x = "Year", y = "Consumer Surplus (minutes)") +
+  ggtitle("Expected Consumer Surplus from Parks per day") +
+  theme_bw()
+
+
+
+```
+
+
+This is really throwing me because some previous graphs made it look like recreation was increasing, but here I'm getting that the welfare has gone down through time. 
+
+What I'm wondering is if this is people become more inelastic to a price change? Investigate this, but at first glance that doesn't seem like it. 
+
+Think to think about with the time trend is that supply of local recreation locations has changed over time and so more people may be able to travel less??? I need to think about the different mechanisms that could lead to this result. 
+
 
 ## Seperate by race?
 
@@ -134,7 +223,7 @@ This is per choice occasion. So this would be `r 16*365/60` hours per person per
 
 
 
-# get a year trend?
+
 
 ```{r}
 reg1$freq

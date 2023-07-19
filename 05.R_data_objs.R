@@ -29,7 +29,7 @@ myRUM_df <- myWorking_og %>%
   filter(race != "other") %>% 
   
   # dropping people we don't have weather for
-  filter(!is.na(tmmx)) %>% 
+  # filter(!is.na(tmmx)) %>% 
   
   # drop no leisure
   filter(activity != "no_leisure") %>%
