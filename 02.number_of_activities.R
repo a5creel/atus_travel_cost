@@ -217,7 +217,9 @@ cleanYears("2003-2012")
 myDem1 <- vroom("clean_data/2.demographics_2003-2012.csv")
 myDem2 <- vroom("clean_data/2.demographics_2013-2021.csv")
 
-myDem <- bind_rows(myDem1, myDem2)
+myDem <- bind_rows(myDem1, myDem2) %>% 
+  mutate(wt = if_else(year == 2020, wt20, wt06)) %>% 
+  select(-wt06, -wt20)
 
 vroom_write(myDem, "clean_data/2.demographics_ALL.csv")
 

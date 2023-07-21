@@ -1,0 +1,188 @@
+---
+title: 'Summary Stats: Take Two'
+author: "Andie Creel"
+date: "2023-07-21"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message  = FALSE)
+
+```
+
+# What I want to know 
+
+- map of data I have coverage for when I don't drop the counties that I don't have temperature for vs when I do filter on temp 
+- How many Americans choose each activity every day (on average)
+- average travel time 
+
+
+```{r}
+options(scipen = 999)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(vroom)
+library(mlogit)
+library(stargazer)
+library(lubridate)
+library(ggplot2)
+library(gridExtra)
+library(urbnmapr) # For map
+library(gridExtra)
+
+
+
+# -----------------------------------------------------------------------------
+# read in R memory built in R_data_objs
+# -----------------------------------------------------------------------------
+load("05.RUM_data_objs.RData")
+
+```
+
+
+# Map 
+
+```{r}
+# -----------------------------------------------------------------------------
+# Map for all counties 
+# -----------------------------------------------------------------------------
+
+# code if temperature is NA 
+myCounties_1 <- myRUM_df %>%
+  select(county, tmmx) %>%
+  mutate(value = if_else(!is.na(tmmx), "has temp data", "no temp data")) %>% 
+  select(-tmmx) %>% 
+  distinct() %>% 
+  filter(county %% 1000 != 0)
+  
+counties_sf_og <- get_urbn_map(map = "counties", sf = TRUE)
+
+counties_sf <- counties_sf_og %>%
+  mutate(county_fips = as.numeric(county_fips))
+
+myMap_1_df <- left_join(counties_sf, myCounties_1, by =c("county_fips" = "county"))
+
+myMap_1_df %>%
+  ggplot() +
+  geom_sf(mapping = aes(fill = factor(value)), color = NA) +  # Use factor to treat value as discrete
+  geom_sf(data = counties_sf_og, fill = NA, color = "black", size = 0.25) +
+  coord_sf(datum = NA) +   
+  scale_fill_manual(values = c("no temp data" = "red", "has temp data" = "blue"), na.value = "white") +
+  theme_bw() + theme(legend.position = "bottom", panel.border = element_blank()) +
+  ggtitle("Counties that I currently have ATUS data for")
+
+
+
+```
+
+When I drop data for counties that I don't have temperate data for, only drop 4 counties (all in AK or HI). The lack of temperate data isn't systematic in a region, the issue is seems to be that around half of people don't report what county they live in, they only report the state that they live in. 
+
+I investigated if this was an issue of merging on county versus MSA, but that doesn't fix it either. 
+
+
+# Number of Americans that choose each activity per day 
+
+```{r}
+# -----------------------------------------------------------------------------
+# Pivot back wide
+# -----------------------------------------------------------------------------
+
+myRUM_wide <- myRUM_df %>% 
+  pivot_wider(
+    id_cols = c(caseid, date),
+    names_from = activity,
+    values_from = c(number_activities, travel_time_avg_race, travel_time_total_race,
+                    travel_time_avg_state, travel_time_total_state, choice)
+  )
+
+# -----------------------------------------------------------------------------
+# Multiply by weight
+# -----------------------------------------------------------------------------
+
+myDems <- vroom("clean_data/2.demographics_ALL.csv")
+
+myRUM_wide_wts <- left_join(myRUM_wide, myDems, by = "caseid") 
+
+myAvgChoicePerDay <- myRUM_wide_wts %>% 
+  select(date,starts_with("choice"), wt, year) %>% 
+  
+  # multiply if someone did an activity by that person's weight 
+  mutate(wt_outdoor_away = wt*choice_outdoor_away) %>% 
+  mutate(wt_indoor_away = wt*choice_indoor_away) %>%
+  mutate(wt_indoor_home = wt*choice_indoor_home) %>%
+  mutate(wt_outdoor_home = wt*choice_outdoor_home) %>% 
+  select(date, year, starts_with("wt_")) %>% 
+  
+  #get total people by day
+  group_by(date) %>% 
+  mutate(
+    sum_outdoor_away = sum(wt_outdoor_away, na.rm = FALSE),
+    sum_indoor_away = sum(wt_indoor_away, na.rm = FALSE),
+    sum_indoor_home = sum(wt_indoor_home, na.rm = FALSE),
+    sum_outdoor_home = sum(wt_outdoor_home, na.rm = FALSE)) %>% 
+  ungroup %>% 
+  
+  # get average by year
+  group_by(year) %>% 
+   summarise(
+    mean_outdoor_away = mean(sum_outdoor_away, na.rm = FALSE),
+    mean_indoor_away =  mean(sum_indoor_away, na.rm = FALSE),
+    mean_indoor_home =  mean(sum_indoor_home, na.rm = FALSE),
+    mean_outdoor_home = mean(sum_outdoor_home, na.rm = FALSE)) %>% 
+  pivot_longer(
+    cols = starts_with("mean_"),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+# plot indoor
+myAvgChoicePerDay_indoor <- myAvgChoicePerDay %>% 
+  filter(str_detect(variable, "indoor"))
+
+ggplot(myAvgChoicePerDay_indoor , aes(x = year, y = value, color = variable)) +
+  geom_line() +
+  labs(title = "Mean Activities by Year (Indoor",
+       x = "Year",
+       y = "Mean Activities") +
+  theme_minimal()
+  
+# plot outdoor
+myAvgChoicePerDay_outdoor <- myAvgChoicePerDay %>% 
+  filter(str_detect(variable, "outdoor"))
+
+ggplot(myAvgChoicePerDay_outdoor , aes(x = year, y = value, color = variable)) +
+  geom_line() +
+  labs(title = "Mean Activities by Year (Outdoor)",
+       x = "Year",
+       y = "Mean Activities") +
+  theme_minimal()
+
+
+
+```
+
+
+
+
+
+# Average Travel Time Per Activity 
+
+```{r}
+myAvgTravelTime <- myRUM_wide_wts %>% 
+  select(starts_with(travel_time_total_state), wt) 
+  
+
+```
+
+
+
+
+
+
+
+
+
+
+

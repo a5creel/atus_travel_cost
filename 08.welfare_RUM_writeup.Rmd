@@ -12,15 +12,21 @@ knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(message  = FALSE)
 ```
 
-# Questions of interest: 
+# Question of interest: 
 
-As summers heat up, how can individuals adapt the time of year they recreate outside? How can institutions like schools and work change so that people can adapt their recreation schedule. 
+How could the ATUS data set produce an easily repeatable statistical product evaluating the contribution of outdoor recreation to 
   
 # RUM model (Annual)
 
-Indirect utility:
+Indirect utility (simplest model possible):
+
+$$V_{itc} = \alpha_c + \beta x_{ic} $$
+Indirect utility (extention with weather included):
+
+Indirect utility (simplest model possible):
 
 $$V_{itc} = \alpha_c + \beta x_{ic} + \gamma_c w_t $$
+
 Where $V$ is the indirect utility for person $i$ on choice occasion $t$ (day) for choice $c$. $\alpha$ is a choice specific constant. $\beta$ is a general coefficient for travel **time** $x$. $\gamma$ is a choice specific coefficient for weather on day $t$ at for the choice occasion $w$. 
 
 
@@ -64,9 +70,9 @@ stargazer(reg1, reg2,
 ```
  The numeraire is minutes. 
  
- Currently dropping so much data for where I dont have temp. 
+Currently dropping so much data for where I don't have temperature data. Including temperature is important for the intercepts, but has little effect on the dis-utility from travel, $\beta$. 
 
-## Welfare calcs
+# Welfare calcs
 
 We can identify consumer surplus up to an unidentified constant, therefore the number on its own is not relevant. However changes in consumer surplus are identified. 
 
@@ -74,10 +80,16 @@ I can use a log-sum to calculate the expected utility for each choice occasion, 
 
 $$E(U_t) = \ln \sum_{c = 1}^C e^{V_{tc}} + C.$$
 
-If I know that marginal utility of the numeraire, $\beta$, then I can calculate the expected consumer surplus, $E(U)/\beta$. 
+If I know that marginal utility of the numeraire, $\beta$, then I can calculate the expected consumer surplus, $\frac{E(U)}{\beta}$. 
+
+## Potential Counterfactuals
 
 
-### no travel time to outdoor leisure >10 min 
+### No travel time to outdoor leisure >10 min 
+
+A major goal that originated at Trust for Public Land and has been talked about for 30x30 is to have a green space within 10 minutes of anyone (? I need to double check all this).
+
+In this counter factual I change any travel time great than 10 minutes to 10 minutes. 
 
 ```{r}
 # -----------------------------------------------------------------------------
@@ -107,17 +119,20 @@ summary(surplus_10min)
 ```
 
 
-Consumer's surplus variation range from 0 to 19 minutes, with a median value of about 1 minute. This is per choice occasion (day). 
+Expected consumer's surplus variation range from 0 to 19 minutes, with a median value of about 1 minute. This is per choice occasion (day). 
 
-ATTN: does this account for how many people would start taking a trip who hadn't been earlier? 
+ATTN: Does this account for how many people would start taking a trip who hadn't been earlier? *I believe it does, but want to discuss.* 
 
 
 ### Travel time for ourdoor rec goes to infinity 
 
-```{r}
+Sending the price to infinity is semi-commonly used (to various degrees of acceptance) to simulate the welfare loss of eliminating a choice. This could potentially be used to get the total welfare contribution of that choice existing. 
 
+If the goal is to create a easily repeatable statistical product *that measures the welfare contribution of an activity annually* I believe this would be the most established way to achieve that goal. 
+
+```{r}
 # -----------------------------------------------------------------------------
-# create a data set where travel time isn't ever more than 10 minutes for outdoor leisure
+# create a data set where travel time goes to infinity 
 # -----------------------------------------------------------------------------
 
 myRUM_inf <- myRUM_df %>%
@@ -136,11 +151,11 @@ summary(surplus_inf)
 ```
 
 
-If the travel cost of visiting a park went to 10,000 minutes, the average person would experience 16 minutes of welfare loss per choice occasion. I tried with 40K and got same result. This is mean to mirror price going to infinity, which is sometimes used to calcute the welfare loss of parks being taken away. 
+If the travel cost of visiting a park went to 10,000 minutes (if I go an order of magnitude beyond this I get hessian errors), the average person would experience 16 minutes of welfare loss per choice occasion. I tried with 40K and got same result. 
 
 This is per choice occasion. So this would be 97 hours per person per year (16*365/60).
 
-Median weekly income in Q2 2023 is \$1,095, or \$27 per hour assuming a 40 hour work week. This would be a welfare loss of \$2628 per year.
+Median weekly income in Q2 2023 is \$1,095, or \$27 per hour assuming a 40 hour work week. This would be a welfare loss of \$2628 per year per person.
 
 
 # Trend through years
@@ -197,7 +212,7 @@ mean(surplus_studyperiod$Mean) # checks out as 16 (to be expected)
 # Plotting trend
 ggplot(surplus_studyperiod, aes(x = year, y = -1*Mean)) +
   geom_point() +
-  geom_smooth(method = "lm", se = T) + 
+  geom_smooth(method = "lm", se = F) + 
   labs(x = "Year", y = "Consumer Surplus (minutes)") +
   ggtitle("Expected Consumer Surplus from Parks per day") +
   theme_bw()
@@ -207,29 +222,20 @@ ggplot(surplus_studyperiod, aes(x = year, y = -1*Mean)) +
 ```
 
 
-This is really throwing me because some previous graphs made it look like recreation was increasing, but here I'm getting that the welfare has gone down through time. 
+This is really throwing me because some previous graphs made it look like recreation time was increasing, but here I'm getting that the welfare has gone down through time. Those previous graphs were on the extensive margin.
 
 What I'm wondering is if this is people become more inelastic to a price change? Investigate this, but at first glance that doesn't seem like it. 
 
-Think to think about with the time trend is that supply of local recreation locations has changed over time and so more people may be able to travel less??? I need to think about the different mechanisms that could lead to this result. 
+Thing to think about with the time trend is that supply of local recreation locations has changed over time and so more people may be able to travel less? I need to think about the different mechanisms that could lead to this result. 
 
 
-## Seperate by race?
-
-```{r}
-
-
-```
+<!-- ## Seperate by race? -->
 
 
 
 
 
-```{r}
-reg1$freq
 
-
-```
 
 
 
