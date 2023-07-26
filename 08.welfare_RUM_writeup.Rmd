@@ -43,6 +43,8 @@ library(lubridate)
 library(ggplot2)
 library(gridExtra)
 library(parallel)
+library(urbnmapr) # For map
+
 
 # -----------------------------------------------------------------------------
 # read in R memory built in R_data_objs
@@ -71,6 +73,47 @@ stargazer(reg1, reg2,
  The numeraire is minutes. 
  
 Currently dropping so much data for where I don't have temperature data. Including temperature is important for the intercepts, but has little effect on the dis-utility from travel, $\beta$. 
+
+### Map 
+
+```{r}
+# -----------------------------------------------------------------------------
+# Map for all counties 
+# -----------------------------------------------------------------------------
+
+# code if temperature is NA 
+myCounties_1 <- myRUM_df %>%
+  select(county, tmmx) %>%
+  mutate(value = if_else(!is.na(tmmx), "has temp data", "no temp data")) %>% 
+  select(-tmmx) %>% 
+  distinct() %>% 
+  filter(county %% 1000 != 0)
+  
+counties_sf_og <- get_urbn_map(map = "counties", sf = TRUE)
+
+counties_sf <- counties_sf_og %>%
+  mutate(county_fips = as.numeric(county_fips))
+
+myMap_1_df <- left_join(counties_sf, myCounties_1, by =c("county_fips" = "county"))
+
+myMap_1_df %>%
+  ggplot() +
+  geom_sf(mapping = aes(fill = factor(value)), color = NA) +  # Use factor to treat value as discrete
+  geom_sf(data = counties_sf_og, fill = NA, color = "black", size = 0.25) +
+  coord_sf(datum = NA) +   
+  scale_fill_manual(values = c("no temp data" = "red", "has temp data" = "blue"), na.value = "white") +
+  theme_bw() + theme(legend.position = "bottom", panel.border = element_blank()) +
+  ggtitle("Counties that I currently have ATUS data for")
+
+
+
+```
+
+When I drop data for counties that I don't have temperate data for, only drop 4 counties (all in AK or HI). The lack of temperate data isn't systematic in a region, the issue is seems to be that around half of people don't report what county they live in, they only report the state that they live in. 
+
+I investigated if this was an issue of merging on county versus MSA, but that doesn't fix it either. 
+
+
 
 # Welfare calcs
 
@@ -202,19 +245,19 @@ getAnnualCS <- function(y){
   # return(coef(reg_og)["travel_time_total_state"])
 }
 
-surplus_studyperiod <- mclapply(2003:2021, getAnnualCS) %>%
+myCS_inf_03_21 <- mclapply(2003:2021, getAnnualCS) %>%
   bind_rows() %>%
   bind_cols(year = 2003:2021) %>%
   select(year, everything())
 
-mean(surplus_studyperiod$Mean) # checks out as 16 (to be expected)
+mean(myCS_inf_03_21$Mean) # checks out as 16 (to be expected)
 
 # Plotting trend
-ggplot(surplus_studyperiod, aes(x = year, y = -1*Mean)) +
+ggplot(myCS_inf_03_21, aes(x = year, y = Mean)) +
   geom_point() +
   geom_smooth(method = "lm", se = F) + 
   labs(x = "Year", y = "Consumer Surplus (minutes)") +
-  ggtitle("Expected Consumer Surplus from Parks per day") +
+  ggtitle("Change in Consumer Surplus", subtitle = "For if the travel cost of outdoor rec went to 10K minutes") +
   theme_bw()
 
 
@@ -224,9 +267,195 @@ ggplot(surplus_studyperiod, aes(x = year, y = -1*Mean)) +
 
 This is really throwing me because some previous graphs made it look like recreation time was increasing, but here I'm getting that the welfare has gone down through time. Those previous graphs were on the extensive margin.
 
+The trend line is very steep down, but it seems like it's actually been pretty stable since 2010. 
+
 What I'm wondering is if this is people become more inelastic to a price change? Investigate this, but at first glance that doesn't seem like it. 
 
 Thing to think about with the time trend is that supply of local recreation locations has changed over time and so more people may be able to travel less? I need to think about the different mechanisms that could lead to this result. 
+
+### Number of Americans that choose each activity per day 
+
+```{r}
+# -----------------------------------------------------------------------------
+# Pivot back wide
+# -----------------------------------------------------------------------------
+
+myRUM_wide <- myRUM_df %>% 
+  pivot_wider(
+    id_cols = c(caseid, date),
+    names_from = activity,
+    values_from = c(number_activities, travel_time_avg_race, travel_time_total_race,
+                    travel_time_avg_state, travel_time_total_state, choice)
+  )
+
+# -----------------------------------------------------------------------------
+# Multiply by weight
+# -----------------------------------------------------------------------------
+
+myDems <- vroom("clean_data/2.demographics_ALL.csv")
+
+myRUM_wide_wts <- left_join(myRUM_wide, myDems, by = "caseid") 
+
+myAvgChoicePerDay <- myRUM_wide_wts %>% 
+  select(date,starts_with("choice"), wt, year) %>% 
+  
+  # multiply if someone did an activity by that person's weight 
+  mutate(wt_outdoor_away = wt*choice_outdoor_away) %>% 
+  mutate(wt_indoor_away = wt*choice_indoor_away) %>%
+  mutate(wt_indoor_home = wt*choice_indoor_home) %>%
+  mutate(wt_outdoor_home = wt*choice_outdoor_home) %>% 
+  select(date, year, starts_with("wt_")) %>% 
+  
+  #get total people by day
+  group_by(date) %>% 
+  mutate(
+    sum_outdoor_away = sum(wt_outdoor_away, na.rm = FALSE),
+    sum_indoor_away = sum(wt_indoor_away, na.rm = FALSE),
+    sum_indoor_home = sum(wt_indoor_home, na.rm = FALSE),
+    sum_outdoor_home = sum(wt_outdoor_home, na.rm = FALSE)) %>% 
+  ungroup %>% 
+  
+  # get average trips per day by year
+  group_by(year) %>% 
+   summarise(
+    mean_outdoor_away = mean(sum_outdoor_away, na.rm = FALSE),
+    mean_indoor_away =  mean(sum_indoor_away, na.rm = FALSE),
+    mean_indoor_home =  mean(sum_indoor_home, na.rm = FALSE),
+    mean_outdoor_home = mean(sum_outdoor_home, na.rm = FALSE)) %>% 
+  pivot_longer(
+    cols = starts_with("mean_"),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+# plot indoor
+myAvgChoicePerDay_indoor <- myAvgChoicePerDay %>% 
+  filter(str_detect(variable, "indoor"))
+
+num_per_day_in <- ggplot(myAvgChoicePerDay_indoor , aes(x = year, y = value, color = variable)) +
+  geom_line() +
+  labs(title = "Total trips per day (Indoor)",
+       x = "Year",
+       y = "Trips") +
+  theme_bw()
+  
+# plot outdoor
+myAvgChoicePerDay_outdoor <- myAvgChoicePerDay %>% 
+  filter(str_detect(variable, "outdoor"))
+
+num_per_day_out <- ggplot(myAvgChoicePerDay_outdoor , aes(x = year, y = value, color = variable)) +
+  geom_line() +
+  labs(title = "Total trips per day (Outdoor)",
+       x = "Year",
+       y = "Trips") +
+  theme_bw()
+
+
+grid.arrange(num_per_day_in, num_per_day_out)
+
+```
+
+### Welfare per day multiplied by expected number of trips per year 
+
+```{r}
+# -----------------------------------------------------------------------------
+# merge mean num trips with suprlus per day 
+# -----------------------------------------------------------------------------
+
+# trips per day 
+myTripsPerYear_outdoor <- myAvgChoicePerDay_outdoor %>% 
+  filter(variable == "mean_outdoor_away") %>% 
+  rename(trips_per_day = value) 
+
+# value per day (numeraire is hours)
+myCS_outdoor <- myCS_inf_03_21 %>% 
+  select(year, Mean) %>% 
+  rename(mean_cs_per_day_per_person = Mean)
+
+# total CS per year 
+myTotalWelfare_outdoor_og <- left_join(myTripsPerYear_outdoor, myCS_outdoor, by = "year") %>% 
+  mutate(mean_cs_per_day_total = mean_cs_per_day_per_person * trips_per_day) %>% 
+  mutate(mean_cs_per_year_hours = mean_cs_per_day_total * 365 / 60) # numeraire is hours
+
+
+myTotalWelfare_outdoor <- myTotalWelfare_outdoor_og %>% 
+  select(year, mean_cs_per_year_hours) %>% 
+  mutate(mean_cs_per_year_dollars = mean_cs_per_year_hours * 27) # using median income's hourly (assuming 40 hour work week)
+
+# Plotting trend
+ggplot(myTotalWelfare_outdoor, aes(x = year, y = mean_cs_per_year_dollars/10^9)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) + 
+  labs(x = "Year", y = "Consumer Surplus (Billion dollars)") +
+  ggtitle("Change in Consumer Surplus per Year", subtitle = "For if the travel cost of outdoor rec went to 10K minutes") +
+  theme_bw()
+
+
+```
+
+Getting rid of local outdoor rec opportunities (away from home) would eliminate 30 billion dollars of consumer surplus per year. 
+
+
+### average travel time to leisure activities 
+
+```{r}
+
+myTravelTimes_outdoor <- myRUM_wide %>% 
+  filter(choice_outdoor_away == 1) %>%  # must participate in outdoor rec
+  mutate(year = year(date)) %>% 
+  select(year, travel_time_total_state_outdoor_away) 
+  
+# summary 
+summary(myTravelTimes_outdoor$travel_time_total_state_outdoor_away)
+  
+# trend through time
+myAvg_TravelTimes_outdoor <- myTravelTimes_outdoor %>% 
+  mutate(avg_travel_time_03_21 = mean(travel_time_total_state_outdoor_away)) %>% 
+  group_by(year) %>% 
+  mutate(avg_travel_time_year = mean(travel_time_total_state_outdoor_away)) %>% 
+  select(year, avg_travel_time_03_21, avg_travel_time_year) %>% 
+  distinct()
+  
+
+# Plotting trend
+ggplot(myAvg_TravelTimes_outdoor, aes(x = year, y = avg_travel_time_year)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) + 
+  labs(x = "Year", y = "Travel Time (minutes)") +
+  ggtitle("Average travel time for away from home outdoor leisure") +
+  theme_bw()
+
+
+
+```
+
+The average travel time for outdoor rec away from home is 12 minutes. A lot of people dont report traveling for outdoor rec despite reporting that they do participate in it. 
+
+The travel time for outdoor rec seems to be trending down. If travel time are getting shorter that coudl explain CS decreasing when using a travel cost methodology. 
+
+
+
+
+
+<!-- # Average Travel Time Per Activity  -->
+
+```{r}
+# myAvgTravelTime <- myRUM_wide_wts %>% 
+  # select(starts_with(travel_time_total_state), wt) 
+  
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 <!-- ## Seperate by race? -->

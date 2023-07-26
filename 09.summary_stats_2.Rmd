@@ -141,7 +141,7 @@ myAvgChoicePerDay <- myRUM_wide_wts %>%
 myAvgChoicePerDay_indoor <- myAvgChoicePerDay %>% 
   filter(str_detect(variable, "indoor"))
 
-ggplot(myAvgChoicePerDay_indoor , aes(x = year, y = value, color = variable)) +
+num_per_day_in <- ggplot(myAvgChoicePerDay_indoor , aes(x = year, y = value, color = variable)) +
   geom_line() +
   labs(title = "Mean Activities by Year (Indoor",
        x = "Year",
@@ -152,7 +152,7 @@ ggplot(myAvgChoicePerDay_indoor , aes(x = year, y = value, color = variable)) +
 myAvgChoicePerDay_outdoor <- myAvgChoicePerDay %>% 
   filter(str_detect(variable, "outdoor"))
 
-ggplot(myAvgChoicePerDay_outdoor , aes(x = year, y = value, color = variable)) +
+num_per_day_out <- ggplot(myAvgChoicePerDay_outdoor , aes(x = year, y = value, color = variable)) +
   geom_line() +
   labs(title = "Mean Activities by Year (Outdoor)",
        x = "Year",
@@ -160,6 +160,7 @@ ggplot(myAvgChoicePerDay_outdoor , aes(x = year, y = value, color = variable)) +
   theme_minimal()
 
 
+grid.arrange(num_per_day_in, num_per_day_out)
 
 ```
 
@@ -167,11 +168,11 @@ ggplot(myAvgChoicePerDay_outdoor , aes(x = year, y = value, color = variable)) +
 
 
 
-# Average Travel Time Per Activity 
+<!-- # Average Travel Time Per Activity  -->
 
 ```{r}
-myAvgTravelTime <- myRUM_wide_wts %>% 
-  select(starts_with(travel_time_total_state), wt) 
+# myAvgTravelTime <- myRUM_wide_wts %>% 
+  # select(starts_with(travel_time_total_state), wt) 
   
 
 ```
