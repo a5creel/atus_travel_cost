@@ -14,18 +14,14 @@ knitr::opts_chunk$set(message  = FALSE)
 
 # Question of interest: 
 
-How could the ATUS data set produce an easily repeatable statistical product evaluating the contribution of outdoor recreation to 
+How could the ATUS data set produce an easily repeatable statistical product evaluating the contribution of local outdoor recreation to American's welfare.
   
 # RUM model (Annual)
 
 Indirect utility (simplest model possible):
 
 $$V_{itc} = \alpha_c + \beta x_{ic} $$
-Indirect utility (extension with weather included):
-
-$$V_{itc} = \alpha_c + \beta x_{ic} + \gamma_c w_t $$
-
-Where $V$ is the indirect utility for person $i$ on choice occasion $t$ (day) for choice $c$. $\alpha$ is a choice specific constant. $\beta$ is a general coefficient for travel **time** $x$. $\gamma$ is a choice specific coefficient for weather on day $t$ at for the choice occasion $w$. 
+Where $V$ is the indirect utility for person $i$ on choice occasion $t$ (day) for choice $c$. $\alpha$ is a choice specific constant. $\beta$ is a general coefficient for travel **time** $x$. 
 
 
 ```{r}
@@ -435,28 +431,6 @@ The travel time for outdoor rec seems to be trending down. If travel time are ge
 
 
 
-<!-- # Average Travel Time Per Activity  -->
-
-```{r}
-# myAvgTravelTime <- myRUM_wide_wts %>% 
-  # select(starts_with(travel_time_total_state), wt) 
-  
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- ## Seperate by race? -->
 
 
 

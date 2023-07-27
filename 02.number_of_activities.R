@@ -24,10 +24,10 @@ cleanYears <-function(file_names){
   # atus_00003 only has 2017 - 2022
   # -----------------------------------------------------------------------------
   # ddi <- read_ipums_ddi(paste0("raw_data/atus_", extract, ".xml")) #reads in code book
-  myData <-vroom(paste0("clean_data/1.atus_", file_names, ".csv")) # reads in data 
+  myData <- vroom(paste0("clean_data/1.atus_", file_names, ".csv")) # reads in data 
   
   myCodes <- vroom("clean_data/my_codes.csv") %>%
-    filter(my_code == 1) %>% #should be included
+    filter(my_code == 1) %>% # should be included
     mutate(act_code = as.character(act_code))
   
   # -----------------------------------------------------------------------------
@@ -35,7 +35,7 @@ cleanYears <-function(file_names){
   # Creating individual demographics file
   # -----------------------------------------------------------------------------
   
-  # Dropping replicate weights, only working with one year
+  # Dropping replicate weights
   myWorking_temp <- myData %>%
     select(-starts_with("RWT")) %>% # dropping replicate weights
     mutate(ACTIVITY = str_pad(ACTIVITY, width = 6, pad = "0", side = "left")) 
@@ -116,7 +116,7 @@ cleanYears <-function(file_names){
     select(-indoor_other_temp, -indoor_home_temp)
   
   (sum(myWorking$indoor_leisure) == sum(myWorking$indoor_home) + sum(myWorking$indoor_away))
-  
+
   # -----------------------------------------------------------------------------
   # Group by date and individual, construct number and travel
   # -----------------------------------------------------------------------------
@@ -185,6 +185,25 @@ cleanYears <-function(file_names){
            leisure_away.trvltot = total_time_leisure,
            rec_away.trvltot = total_time_rec)
   
+  
+  # -----------------------------------------------------------------------------
+  # create a file with caseid, date, and an indicator for someone who did outdoor
+  # red AND traveled for it
+  # -----------------------------------------------------------------------------
+  myRecTravel <- myWorking_grouped_travel_2 %>% 
+    select(caseid, date, rec_away.num, rec_away.trvltot) %>% 
+    mutate(rec_away_yes = if_else(rec_away.num > 0 , 1, 0)) %>% 
+    mutate(rec_travel_yes = if_else(rec_away.trvltot > 0 , 1, 0)) %>% 
+    mutate(rec_away_travel_and_choice = rec_away_yes*rec_travel_yes) %>% 
+    select(caseid, date, rec_away_yes, rec_travel_yes, rec_away_travel_and_choice)
+  
+  vroom_write(myRecTravel, paste0("clean_data/2.rec_and_trvl_indicator_", file_names, ".csv"), delim = ",")
+    
+  
+  # -----------------------------------------------------------------------------
+  # pivot
+  # -----------------------------------------------------------------------------
+  
   myFinal <- myWorking_grouped_travel_2 %>% 
     pivot_longer(cols = -c(caseid, date),
                  names_to = c("variable", ".value"),
@@ -231,6 +250,14 @@ myNum2 <- vroom("clean_data/2.num_activities_long_2013-2021.csv")
 myNum <- bind_rows(myNum1, myNum2)
 
 vroom_write(myNum, "clean_data/2.num_activities_ALL.csv")
+
+# rec and travel indicator
+myRec1 <- vroom("clean_data/2.rec_and_trvl_indicator_2003-2012.csv")
+myRec2 <- vroom("clean_data/2.rec_and_trvl_indicator_2013-2021.csv")
+
+myRec <- bind_rows(myRec1, myRec2)
+
+vroom_write(myRec, "clean_data/2.rec_and_trvl_indicator_ALL.csv")
 
 # -----------------------------------------------------------------------------
 # Get wide orginal data
