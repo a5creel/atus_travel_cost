@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(message  = FALSE)
 ```
 
-# Question of interest: 
+# Question of interest: NOT SURE IF THIS IS STILL RELEVANT !?
 
 How could the ATUS data set produce an easily repeatable statistical product evaluating the contribution of local outdoor recreation to American's welfare.
   

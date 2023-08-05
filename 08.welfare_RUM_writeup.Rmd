@@ -49,6 +49,21 @@ library(urbnmapr) # For map
 # -----------------------------------------------------------------------------
 load("05.RUM_data_objs.RData")
 
+# read in who must be dropped 
+myDropped <-  vroom("clean_data/2.rec_and_trvl_indicator_ALL.csv") %>% 
+  select(-date)
+
+# merge in those who didn't both travel and participate in outdoor rec 
+myRUM_idx_thin <- left_join(myRUM_df, myDropped, by = "caseid") %>% 
+  mutate(choice = if_else(activity == "outdoor_away", rec_away_travel_and_choice, choice)) %>% 
+  
+  # dropping the new no leisure 
+  group_by(caseid) %>% 
+  mutate(new_no_leisure = sum(choice)) %>% 
+  ungroup() %>% 
+  filter(new_no_leisure !=0) %>% 
+  dfidx(idx = list(NA, "activity")) 
+
 # -----------------------------------------------------------------------------
 # preferred reg specification (total travel time grouped by state)
 # -----------------------------------------------------------------------------
@@ -63,7 +78,12 @@ reg2 <- mlogit(choice ~ travel_time_total_state | tmmx,
                myRUM_idx, 
                reflevel = "indoor_home")
 
-stargazer(reg1, reg2, 
+# Did rec AND traveled for it 
+reg3 <- mlogit(choice ~ travel_time_total_state, 
+               myRUM_idx_thin, 
+               reflevel = "indoor_home") 
+
+stargazer(reg1, reg2, reg3,
           title = "preferred model (entire year)",
           type = "text")
 
@@ -378,7 +398,11 @@ myTotalWelfare_outdoor_og <- left_join(myTripsPerYear_outdoor, myCS_outdoor, by 
 
 myTotalWelfare_outdoor <- myTotalWelfare_outdoor_og %>% 
   select(year, mean_cs_per_year_hours) %>% 
-  mutate(mean_cs_per_year_dollars = mean_cs_per_year_hours * 27) # using median income's hourly (assuming 40 hour work week)
+  mutate(mean_cs_per_year_dollars = mean_cs_per_year_hours * 27) %>% # using median income's hourly (assuming 40 hour work week)
+  
+  # FILTERING YEARS 
+  filter(year > 2003 ) %>% 
+  filter(year < 2020)
 
 # Plotting trend
 ggplot(myTotalWelfare_outdoor, aes(x = year, y = mean_cs_per_year_dollars/10^9)) +
@@ -412,7 +436,10 @@ myAvg_TravelTimes_outdoor <- myTravelTimes_outdoor %>%
   group_by(year) %>% 
   mutate(avg_travel_time_year = mean(travel_time_total_state_outdoor_away)) %>% 
   select(year, avg_travel_time_03_21, avg_travel_time_year) %>% 
-  distinct()
+  distinct() %>% 
+  # FILTERING YEARS 
+  filter(year > 2003 ) %>% 
+  filter(year < 2020)
   
 
 # Plotting trend

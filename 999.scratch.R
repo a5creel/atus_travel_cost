@@ -2,6 +2,24 @@
 # Andie Creel / Started: June 20, 2023
 
 
+# -----------------------------------------------------------------------------
+# stuff for camp resources 
+# -----------------------------------------------------------------------------
+myWork_og <- vroom("clean_data/1.atus_2013-2021.csv") 
+
+#getting photo 
+myWork <- myWork_og %>% 
+  select(-starts_with("RWT")) %>% 
+  select(DATE, CASEID, ACTIVITY, WHERE, DURATION, START, STOP) %>% 
+  head(100)
+
+# getting number of outdoor leisrue actvities we have coded 
+numLes <- vroom("clean_data/1.my_codes.csv")
+sum(numLes$outdoor_rec)
+
+
+
+
 
 # -----------------------------------------------------------------------------
 # Creating a file path for a .Renviron file to for NOAA api key 

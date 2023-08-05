@@ -20,11 +20,12 @@ library(vroom)
 library(mlogit)
 library(stargazer)
 library(lubridate)
+library(kableExtra)
 # library(choroplethr) #https://github.com/arilamstein/choroplethr
 library(choroplethrMaps)
 data("county.regions")
 library(ggplot2)
-library(gridExtra)
+library(ggpubr)
 ```
 
 # How often is indoor vs outdoor leisure is choosen
@@ -40,25 +41,18 @@ Choices have been multiplied by their sampling weight.
 load("05.RUM_data_objs.RData")
 
 
-# in this dataset, i'm only interested in data I've got temp for 
-myRUM_df <- myRUM_df 
-
 # -----------------------------------------------------------------------------
 # Read in data 
 # -----------------------------------------------------------------------------
 
 # need replication weights 
 myWts <- vroom("clean_data/2.demographics_ALL.csv") %>%
-  mutate(wt = wt06) %>%
-  mutate(wt = if_else(year == 2020, wt20, wt06)) %>%
   select(caseid, year, wt)
 
-myWorking_og <- vroom("clean_data/4.weather_tc_ALL.csv") 
-
-myWorking <- myWorking_og %>%
+myWorking <- myRUM_df %>%
   mutate(choice = if_else(number_activities > 0, 1, 0)) %>% # switching to extensive margin 
   left_join(myWts, by = c("year", "caseid")) %>% # merge in weights 
-  mutate(choice_wt = choice*wt) # weighted
+  mutate(choice_wt = choice*wt) # weighted choice ( whether you choose it times weight)
 
 # -----------------------------------------------------------------------------
 # How often does someone choose each thing (weights accounted for )
@@ -67,17 +61,16 @@ myWorking <- myWorking_og %>%
 # function that takes as df and returns % of days of each activity is choosen 
 getPercTable <- function(df){
 
-  # divided by 5 because it's long by the 5 activities, multiplied by weight 
-  n <- sum(df$wt) /5
+  # divided by 4 because it's long by the 4 activities, multiplied by weight 
+  n <- sum(df$wt) /4
   
-  sumTable <- data.frame(activity = c("indoor_home", "indoor_away", "outdoor_away", "outdoor_home", "no_leisure", "obs"), percent_days_choosen = NA)
+  sumTable <- data.frame(activity = c("indoor_home", "indoor_away", "outdoor_away", "outdoor_home", "obs"), percent_days_choosen = NA)
   
   sumTable$percent_days_choosen[1] <- as.numeric(sum(df[df$activity == "indoor_home",]$choice_wt)/n)
   sumTable$percent_days_choosen[2] <- as.numeric(sum(df[df$activity == "indoor_away",]$choice_wt)/n)
   sumTable$percent_days_choosen[3] <- as.numeric(sum(df[df$activity == "outdoor_home",]$choice_wt)/n)
   sumTable$percent_days_choosen[4] <- as.numeric(sum(df[df$activity == "outdoor_away",]$choice_wt)/n)
-  sumTable$percent_days_choosen[5] <- as.numeric(sum(df[df$activity == "no_leisure",]$choice_wt)/n)
-  sumTable$percent_days_choosen[6] <- nrow(df)/5
+  sumTable$percent_days_choosen[5] <- nrow(df)/5
   
   sumTable <- sumTable %>% 
     mutate(percent_days_choosen = round(percent_days_choosen *100, 1)) 
@@ -89,7 +82,7 @@ getPercTable(myWorking)
 
 ```
 
-## by quarter
+## by season
 
 ```{r}
 # -----------------------------------------------------------------------------
@@ -97,16 +90,25 @@ getPercTable(myWorking)
 # -----------------------------------------------------------------------------
 
 # my season function 
-seasonTables <- lapply(X = 1:4, function(x){
+seasonTables <- lapply(X = c("spring", "summer", "fall", "winter"), function(x){
   myWorking %>%
-    filter(quarter == x) %>%
+    filter(season == x) %>%
     getPercTable() %>% 
-    mutate(!!sym(paste0("quarter_", x)) := percent_days_choosen)%>%
-    select(sym(paste0("quarter_", x)))})
+    rename(!!sym(x) := percent_days_choosen) %>% 
+    select(!!sym(x) )
+  })
 
-bind_cols(activity = c("indoor_home", "indoor_away", "outdoor_away", "outdoor_home", "no_leisure", "obs"), 
-          seasonTables)
+seasonTab <- bind_cols(activity = c("indoor home", "indoor away", "outdoor away", "outdoor home", "n"), 
+          seasonTables) %>% 
+  mutate(across(where(is.numeric), ~ round(., digits = 0))) %>% 
+  mutate(across(where(is.numeric), ~ format(., big.mark = ",")))
 
+seasonTab
+
+# code for camp resources presentation 
+
+latex_code <- kable(seasonTab, format = "latex", booktabs = TRUE, caption = "Percent of Americans Participating by Season")
+cat(latex_code)
 
 ```
 
@@ -422,22 +424,34 @@ myRace_long <- myRace_graphs %>%
     cols = c(outdoor_away, outdoor_home, indoor_away,  indoor_home), # Select the columns to pivot
     names_to = "activity",       # Name of the new 'activity' column
     values_to = "minutes"          # Name of the new 'value' column
-  )
+  ) %>%
+  filter(!str_detect(race_1, "^other")) %>%  # dropping the "other" race
+  filter(year < 2020)
 
+# Create a named vector of colors to map to specific race categories
+custom_colors <- c("asian" = "darkgreen", "black" = "darkblue", 
+                   "hispanic" = "darkred", "white_noH" = "darkorange")
+
+custom_names <- c("asian" = "Asian", "black" = "Black", 
+                   "hispanic" = "Hispanic", "white_noH" = "White (non-hisp)")
 
 # -----------------------------------------------------------------------------
 # Leisure home graph
 # -----------------------------------------------------------------------------
 myRace_indoor_home <- myRace_long %>%
-  filter(str_detect(activity, "^indoor_home"))
+  filter(str_detect(activity, "^indoor_home")) 
 
 # Plotting the data using ggplot
 plot_race_1 <- ggplot(myRace_indoor_home, aes(x = year, y = minutes, color = race_1)) +
-  geom_line() +
+  geom_point(alpha = 0.6, size = 3) +
+  geom_smooth(method = "lm", se = F, size = 1.5)+
   labs(x = "Year", y = "Minutes") +
-  scale_color_discrete(name = "race") +
-  ggtitle("Avg min on leisure at home per day") +
-  theme_bw()
+  scale_color_manual(values = custom_colors, 
+                     labels = custom_names) +
+  ggtitle("Indoor at Home") +
+  theme_bw()+ 
+  labs(color = "Race")+ 
+  theme(text = element_text(size=20))
 
 # -----------------------------------------------------------------------------
 # Leisure away graph
@@ -447,50 +461,59 @@ myRace_indoor_away <- myRace_long %>%
 
 # Plotting the data using ggplot
 plot_race_2 <-ggplot(myRace_indoor_away, aes(x = year, y = minutes, color = race_1)) +
-  geom_line() +
+  geom_point(alpha = 0.6, size = 3) +
+  geom_smooth(method = "lm", se = F, size = 1.5)+
   labs(x = "Year", y = "Minutes") +
-  scale_color_discrete(name = "race") +
-  ggtitle("Avg min on leisure away from home per day") +
-  theme_bw()
+  scale_color_manual(values = custom_colors, 
+                     labels = custom_names) +
+  ggtitle("Indoor Away from Home") +
+  theme_bw()+ 
+  labs(color = "Race")+ 
+  theme(text = element_text(size=20))
 
-
-```
-
-
-
-```{r}
 # -----------------------------------------------------------------------------
 # rec home graph
 # -----------------------------------------------------------------------------
 myRace_outdoor_home <- myRace_long %>%
-  filter(str_detect(activity, "^outdoor_home")) %>%
-  filter(!str_detect(race_1, "^other"))
+  filter(str_detect(activity, "^outdoor_home")) 
 
 # Plotting the data using ggplot
 plot_race_3 <-ggplot(myRace_outdoor_home, aes(x = year, y = minutes, color = race_1)) +
-  geom_line() +
+  geom_point(alpha = 0.6, size = 3) +
+  geom_smooth(method = "lm", se = F, size = 1.5)+
   labs(x = "Year", y = "Minutes") +
-  scale_color_discrete(name = "race") +
-  ggtitle("Avg min on recreation at home per day") +
-  theme_bw()
+  scale_color_manual(values = custom_colors, 
+                     labels = custom_names) +
+  ggtitle("Outdoor at Home") +
+  theme_bw()+ 
+  labs(color = "Race")+ 
+  theme(text = element_text(size=20))
 
 # -----------------------------------------------------------------------------
 # Leisure away graph
 # -----------------------------------------------------------------------------
 myRace_outdoor_away <- myRace_long %>%
-  filter(str_detect(activity, "^outdoor_away"))%>%
-  filter(!str_detect(race_1, "^other"))
+  filter(str_detect(activity, "^outdoor_away"))
 
 # Plotting the data using ggplot
 plot_race_4 <-ggplot(myRace_outdoor_away, aes(x = year, y = minutes, color = race_1)) +
-  geom_line() +
+  geom_point(alpha = 0.6, size = 3) +
+  geom_smooth(method = "lm", se = F, size = 1.5)+
   labs(x = "Year", y = "Minutes") +
-  scale_color_discrete(name = "race") +
-  ggtitle("Avg min on recreation away from home per day") +
-  theme_bw()
+  scale_color_manual(values = custom_colors, 
+                     labels = custom_names) +
+  ggtitle("Outdoor Away from Home") +
+  theme_bw() + 
+  labs(color = "Race")+ 
+  theme(text = element_text(size=20))
 
 
-grid.arrange(plot_race_1, plot_race_2, plot_race_3, plot_race_4, nrow = 2, ncol = 2)
+# Combine the plots using ggarrange
+combined_plot <- ggarrange(plot_race_1, plot_race_2, plot_race_3, plot_race_4, 
+                           ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom")
+combined_plot
+
+ggsave(combined_plot, width = 13, height = 8, filename = "figures/minutes_per_day.jpeg")
 ```
 
 Black people participate in much more leisure at home. 
