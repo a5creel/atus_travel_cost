@@ -115,7 +115,7 @@ We can identify consumer surplus up to an unidentified constant, therefore the n
 
 I can use a log-sum to calculate the expected utility for each choice occasion, t,  
 
-$$E(U_t) = \ln \sum_{c = 1}^C e^{V_{tc}} + C.$$
+$$E(U_t) = \ln \sum_{c = 1}^C e^{V_{tc}} + C.$$. 
 
 If I know that marginal utility of the numeraire, $\beta$, then I can calculate the expected consumer surplus, $\frac{E(U)}{\beta}$. 
 
@@ -377,12 +377,16 @@ myTotalWelfare_outdoor <- myTotalWelfare_outdoor_og %>%
   mutate(mean_cs_per_year_dollars = mean_cs_per_year_hours * 27) # using median income's hourly (assuming 40 hour work week)
 
 # Plotting trend
-ggplot(myTotalWelfare_outdoor, aes(x = year, y = mean_cs_per_year_dollars/10^9)) +
+annual_CS <-  ggplot(myTotalWelfare_outdoor, aes(x = year, y = mean_cs_per_year_dollars/10^9)) +
   geom_point() +
-  geom_smooth(method = "lm", se = F) + 
+  geom_smooth(method = "lm", se = T) + 
   labs(x = "Year", y = "Consumer Surplus (Billion dollars)") +
-  ggtitle("Change in Consumer Surplus per Year", subtitle = "For if the travel cost of outdoor rec went to 10K minutes") +
+  ggtitle("Annual Change in Consumer Surplus", subtitle = "Counter-factual: Travel time increases to 10K minutes") +
   theme_bw()
+
+
+ggsave(annual_CS, )
+
 
 
 ```

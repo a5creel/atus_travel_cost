@@ -15,8 +15,8 @@ myWork <- myWork_og %>%
 
 # getting number of outdoor leisrue actvities we have coded 
 numLes <- vroom("clean_data/1.my_codes.csv")
-sum(numLes$outdoor_rec)
-
+sum(numLes$outdoor_rec) # 48
+sum(numLes$indoor_leisure) # 65 
 
 
 

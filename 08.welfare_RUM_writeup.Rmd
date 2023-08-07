@@ -398,19 +398,22 @@ myTotalWelfare_outdoor_og <- left_join(myTripsPerYear_outdoor, myCS_outdoor, by 
 
 myTotalWelfare_outdoor <- myTotalWelfare_outdoor_og %>% 
   select(year, mean_cs_per_year_hours) %>% 
-  mutate(mean_cs_per_year_dollars = mean_cs_per_year_hours * 27) %>% # using median income's hourly (assuming 40 hour work week)
+  mutate(mean_cs_per_year_dollars = mean_cs_per_year_hours * 27) #%>% # using median income's hourly (assuming 40 hour work week)
   
-  # FILTERING YEARS 
-  filter(year > 2003 ) %>% 
-  filter(year < 2020)
+  # # FILTERING YEARS 
+  # filter(year > 2003 ) %>% 
+  # filter(year < 2020)
 
-# Plotting trend
-ggplot(myTotalWelfare_outdoor, aes(x = year, y = mean_cs_per_year_dollars/10^9)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = F) + 
+annual_CS <-  ggplot(myTotalWelfare_outdoor, aes(x = year, y = mean_cs_per_year_dollars/10^9)) +
+  geom_point(size = 3.5) +
+  geom_smooth(method = "lm", se = F, size = 2) + 
   labs(x = "Year", y = "Consumer Surplus (Billion dollars)") +
-  ggtitle("Change in Consumer Surplus per Year", subtitle = "For if the travel cost of outdoor rec went to 10K minutes") +
-  theme_bw()
+  ggtitle("Annual Change in Consumer Surplus", subtitle = "Counter-factual: Travel time increases to 10K minutes") +
+  theme_bw() + 
+  theme(text = element_text(size=30))
+annual_CS
+
+ggsave(annual_CS, width = 13, height = 8, filename = "figures/annual_CS.jpeg")
 
 
 ```
@@ -436,18 +439,15 @@ myAvg_TravelTimes_outdoor <- myTravelTimes_outdoor %>%
   group_by(year) %>% 
   mutate(avg_travel_time_year = mean(travel_time_total_state_outdoor_away)) %>% 
   select(year, avg_travel_time_03_21, avg_travel_time_year) %>% 
-  distinct() %>% 
-  # FILTERING YEARS 
-  filter(year > 2003 ) %>% 
-  filter(year < 2020)
+  distinct() 
   
 
 # Plotting trend
 ggplot(myAvg_TravelTimes_outdoor, aes(x = year, y = avg_travel_time_year)) +
   geom_point() +
   geom_smooth(method = "lm", se = F) + 
-  labs(x = "Year", y = "Travel Time (minutes)") +
-  ggtitle("Average travel time for away from home outdoor leisure") +
+  labs(x = "Year", y = "Time (minutes)") +
+  ggtitle("Average travel time") +
   theme_bw()
 
 
