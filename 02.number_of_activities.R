@@ -24,7 +24,7 @@ cleanYears <-function(file_names){
   # atus_00003 only has 2017 - 2022
   # -----------------------------------------------------------------------------
   # ddi <- read_ipums_ddi(paste0("raw_data/atus_", extract, ".xml")) #reads in code book
-  myData <- vroom(paste0("clean_data/1.atus_", file_names, ".csv")) # reads in data 
+  myData <- vroom(paste0("raw_data/1.atus_", file_names, ".csv")) # reads in data 
   
   myCodes <- vroom("clean_data/my_codes.csv") %>%
     filter(my_code == 1) %>% # should be included
@@ -264,8 +264,8 @@ vroom_write(myRec, "clean_data/2.rec_and_trvl_indicator_ALL.csv")
 # -----------------------------------------------------------------------------
 
 # reads in data
-myData_1 <- vroom("clean_data/1.ATUS_2013-2021.csv")
-myData_2 <- vroom("clean_data/1.ATUS_2003-2012.csv")
+myData_1 <- vroom("raw_data/1.ATUS_2013-2021.csv")
+myData_2 <- vroom("raw_data/1.ATUS_2003-2012.csv")
 
 
 myData_1 <- myData_1 %>%

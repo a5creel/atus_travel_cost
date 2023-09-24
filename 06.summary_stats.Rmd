@@ -26,6 +26,7 @@ library(choroplethrMaps)
 data("county.regions")
 library(ggplot2)
 library(ggpubr)
+library(gridExtra)
 ```
 
 # How often is indoor vs outdoor leisure is choosen

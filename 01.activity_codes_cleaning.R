@@ -89,6 +89,6 @@ myData_2 <- read_ipums_micro(ddi_2)
 
 # write
 
-vroom_write(myData_1, "clean_data/1.atus_2013-2021.csv")
-vroom_write(myData_2, "clean_data/1.atus_2003-2012.csv")
+vroom_write(myData_1, "raw_data/1.atus_2013-2021.csv")
+vroom_write(myData_2, "raw_data/1.atus_2003-2012.csv")
   
